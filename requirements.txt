@@ -1,0 +1,6 @@
+kivy
+matplotlib
+numpy
+tqdm
+imageio
+bimvee
