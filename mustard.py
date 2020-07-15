@@ -148,17 +148,27 @@ class DataController(GridLayout):
     ending_time = NumericProperty(.0)
     filePathOrName = StringProperty('')
     data_dict = DictProperty({})  # A bimvee-style container of channels
+    data_provider = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         super(DataController, self).__init__(**kwargs)
 
     def update_children(self):
         for child in self.children:
-            child.get_frame(self.time_value, self.time_window)
+            try:
+                child.get_frame(self.time_value, self.time_window)
+            except IndexError:
+                data = self.data_provider.get_data_at_time(self.time_value)[child.channel_name]
+                for v in child.visualisers:
+                    for d in data.keys():
+                        if v.data_type == d:
+                            v.set_data(data[d])
+                child.get_frame(self.time_value, self.time_window)
 
     def add_viewer_and_resize(self, data_dict, channel_name=''):
         visualisers = []
         settings = {}
+        title = channel_name
         for data_type in data_dict.keys():
             settings[data_type] = {}
             if data_type == 'dvs':
@@ -193,7 +203,7 @@ class DataController(GridLayout):
                 settings[data_type]['perspective'] = {'type': 'boolean',
                                                       'default': True
                                                       }
-                channel_name = channel_name + '\nred=x green=y, blue=z'
+                title += '\nred=x green=y, blue=z'
             elif data_type == 'point3':
                 visualiser = VisualiserPoint3(data_dict[data_type])
                 settings[data_type] = {'perspective': {},
@@ -228,7 +238,8 @@ class DataController(GridLayout):
             visualisers.append(visualiser)
         if visualisers:
             new_viewer = Viewer()
-            new_viewer.title = channel_name
+            new_viewer.channel_name = channel_name
+            new_viewer.title = title
             new_viewer.visualisers = visualisers
             new_viewer.settings = settings
             self.add_widget(new_viewer)
@@ -270,7 +281,7 @@ class DataController(GridLayout):
             self.remove_widget(self.children[0])
             print('Removed an old viewer; num remaining viewers: ' + str(len(self.children)))
         if (self.data_dict is None) or not self.data_dict:
-            # When using ntupleviz programmatically, pass an empty dict or None 
+            # When using mustard programmatically, pass an empty dict or None
             # to allow the container to be passed again once updated
             return
         self.ending_time = float(getLastTimestamp(self.data_dict))  # timer is watching this
@@ -314,7 +325,7 @@ class DataController(GridLayout):
                 self.filePathOrName = path
 
         try:
-            self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template)
+            self.data_dict, self.data_provider = importAe(filePathOrName=self.filePathOrName, template=template)
         except ValueError:
             try:
                 from importRosbag import importRosbag
