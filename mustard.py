@@ -301,8 +301,6 @@ class DataController(GridLayout):
         self._popup.open()
 
     def show_load(self):
-        self.load('/media/miacono/Shared/datasets/', ['outout.bag'])
-        return
         self.dismiss_popup()
         content = LoadDialog(load=self.load,
                              cancel=self.dismiss_popup)
