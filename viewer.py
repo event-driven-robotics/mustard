@@ -55,6 +55,7 @@ class Viewer(BoxLayout):
     flipVert = BooleanProperty(False)
     settings = DictProperty({}, allownone=True)
     title = StringProperty('Title')
+    channel_name = StringProperty('Channel')
     colorfmt = 'luminance'
     orientation = 'vertical'
 
