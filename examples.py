@@ -13,7 +13,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with 
 this program. If not, see <https://www.gnu.org/licenses/>.
 
-Examples of how to use "ntupleviz" visualiser to visualise imported data.
+Examples of how to use "mustard" visualiser to visualise imported data.
 It's possible to use the visualizer as a standalone app, 
 using its load dialog to get data into it. 
 However this script assumes running the code section by section 
@@ -29,29 +29,25 @@ from a fresh console, which may mean re-importing and processing data.
 
 ''' 
 Run this from a fresh console
-Make sure you launch from within the dual_visualizer folder.
 '''
 
 import os, sys
 import threading
-#import numpy as np
 
+# If you haven't installed bimvee or mustard as packages, set up your local paths
 # Get os-specific path for local libraries (YMMV)
 prefix = 'C:/' if os.name == 'nt' else '/home/sbamford/'    
+sys.path.append(os.path.join(prefix, 'repos/bimvee'))
 
-# Add path to bimvee library
-sys.path.append(os.path.join(prefix, 'repos/event-driven/python/libraries'))
-# Add path to visualizer
-sys.path.append(os.path.join(prefix, 'repos/event-driven/python'))
-
-from mustard import Mustard
-# Create the ntupleViz app and start it in a thread
-visualizerApp = Mustard()
-thread = threading.Thread(target=visualizerApp.run)
+from mustard.mustard import Mustard
+# Create the mustard  app and start it in a thread
+app = Mustard()
+thread = threading.Thread(target=app.run)
 thread.daemon = True
 thread.start()
 
-# Wait until the load dialog has come up
+# !! Wait until the load dialog has come up, otherwise the component that
+# receives your data won't have been created yet
 
 #%% Load some data that you want to work with
 
@@ -60,8 +56,12 @@ from bimvee.importIitYarp import importIitYarp
 filePathOrName = os.path.join(prefix, "data/2019_11_11_AikoImu/linear_100/ATIS")
 container = importIitYarp(filePathOrName=filePathOrName, tsBits=30)
 
-# Having loaded a dvs dataDict - poke it into the dsm
-visualizerApp.root.data_controller.data_dict = container
+# Having loaded a dvs dataDict - poke it into the right place
+
+# Firstly clear it - if you edit a dict and pass it in again it won't trigger 
+# the change event as it will be the same object
+app.root.data_controller.data_dict = {}  
+app.root.data_controller.data_dict = container
 
 #%% Load some secdvs data
 
@@ -70,7 +70,8 @@ from bimvee.importSecDvs import importSecDvs
 filePathOrName = os.path.join(prefix, "data/2020_03_23 SecDvs from Ander/2020-03-24-12-45-13.bin")
 container = importSecDvs(filePathOrName=filePathOrName)
 
-visualizerApp.root.data_controller.data_dict = container
+app.root.data_controller.data_dict = {}
+app.root.data_controller.data_dict = container
 
 #%% Load some generic data
 
@@ -79,7 +80,8 @@ from bimvee.importAe import importAe
 filePathOrName = os.path.join(prefix, "data/2020_03_23 SecDvs from Ander/2020-03-24-12-45-13.bin")
 container = importAe(filePathOrName=filePathOrName)
 
-visualizerApp.root.data_controller.data_dict = container
+app.root.data_controller.data_dict = {}
+app.root.data_controller.data_dict = container
 
 #%% Simulated DAVIS data
 
@@ -93,20 +95,10 @@ from bimvee.importRpgDvsRos import importRpgDvsRos
     
 filePathOrName = os.path.join(prefix, 'data/rpg/simulation_3walls.bag')
 
-template = {
-    'davis': {
-        'dvs': '/dvs/events',
-        'frame': '/dvs/image_raw',
-        },
-    'extra': {
-        'frame': '/dvs/depthmap',
-        'pose6q': '/dvs/pose'
-        }
-    }
+container = importRpgDvsRos(filePathOrName=filePathOrName)
 
-container = importRpgDvsRos(filePathOrName=filePathOrName, template=template, )
-
-visualizerApp.root.data_controller.data_dict = container
+app.root.data_controller.data_dict = {}
+app.root.data_controller.data_dict = container
 
 #%% Experiment with pose interpolation
 
@@ -119,7 +111,8 @@ poseKept['rotation'] = pose['rotation'][toKeep, :]
 
 container['data']['reduced'] = {'pose6q': poseKept}
 
-visualizerApp.root.data_controller.data_dict = container
+app.root.data_controller.data_dict = {}
+app.root.data_controller.data_dict = container
 
 #%% Constructed rolling poses - X
 
@@ -143,5 +136,16 @@ container = {'pose6q': {'ts': ts,
                         }
             }
 
-visualizerApp.root.data_controller.data_dict.data_dict = container
+app.root.data_controller.data_dict = {}
+app.root.data_controller.data_dict = container
 
+#%% Apply bounding boxes to frames and events
+
+from bimvee.importAe import importAe
+
+filePathOrName = os.path.join(prefix, 'data/2020_05_11_Massi_BoundingBox/numpy/events.npy')
+
+container = importAe(filePathOrName=filePathOrName)
+
+app.root.data_controller.data_dict = {}
+app.root.data_controller.data_dict = container
