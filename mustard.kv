@@ -262,6 +262,7 @@
             time_window: tw_slider.log_value
             on_time_window: self.update_children()
             on_data_dict: time_slider.value = 0
+            on_need_pause: time_slider.play_pause()
         TimeSlider:
             #disabled: not hasattr(data_controller.data_dict, 'data')
             id: time_slider

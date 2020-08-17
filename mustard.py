@@ -51,7 +51,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.popup import Popup
 from kivy.uix.checkbox import CheckBox
 from kivy.properties import ObjectProperty
-from kivy.properties import StringProperty, NumericProperty
+from kivy.properties import StringProperty, NumericProperty, BooleanProperty
 from kivy.properties import DictProperty
 
 # To get the graphics, set this as the current working directory
@@ -149,6 +149,7 @@ class DataController(GridLayout):
     filePathOrName = StringProperty('')
     data_dict = DictProperty({})  # A bimvee-style container of channels
     data_provider = ObjectProperty(None)
+    need_pause = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super(DataController, self).__init__(**kwargs)
@@ -158,12 +159,16 @@ class DataController(GridLayout):
             try:
                 child.get_frame(self.time_value, self.time_window)
             except IndexError:
-                data = self.data_provider.get_data_at_time(self.time_value)[child.channel_name]
-                for v in child.visualisers:
-                    for d in data.keys():
-                        if v.data_type == d:
-                            v.set_data(data[d])
+                self.need_pause = True
+                data = self.data_provider.get_data_at_time(self.time_value)
+                for c in self.children:
+                    channel_data = data[c.channel_name]
+                    for v in c.visualisers:
+                        for d in channel_data.keys():
+                            if v.data_type == d:
+                                v.set_data(channel_data[d])
                 child.get_frame(self.time_value, self.time_window)
+                self.need_pause = False
 
     def add_viewer_and_resize(self, data_dict, channel_name=''):
         visualisers = []
