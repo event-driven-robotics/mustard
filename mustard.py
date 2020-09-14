@@ -329,9 +329,9 @@ class DataController(GridLayout):
             else:
                 self.filePathOrName = path
 
-        try:
+        if template is not None:
             self.data_dict, self.data_provider = importAe(filePathOrName=self.filePathOrName, template=template)
-        except ValueError:
+        else:
             try:
                 from importRosbag import importRosbag
             except ModuleNotFoundError:
