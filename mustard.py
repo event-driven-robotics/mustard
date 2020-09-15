@@ -108,18 +108,24 @@ class DictEditor(GridLayout):
             check_box = CheckBox()
             self.add_widget(check_box)
             self.add_widget(TextInput(text=str(n)))
-            spinner = Spinner(values=['dvs', 'frame', 'pose6q', 'cam', 'imu', 'flowMap'])
+            spinner = Spinner(values=['dvs', 'frame', 'pose6q', 'cam', 'imu', 'flowMap', 'point3'])
             if 'events' in topic:
                 spinner.text = 'dvs'
                 check_box.active = True
-            elif 'image' in topic or 'depthmap' in topic:
+            elif 'image' in topic or 'depth' in topic:
                 spinner.text = 'frame'
                 check_box.active = True
-            elif 'pose' in topic:
+            elif 'pose' in topic or 'twist' in topic:
                 spinner.text = 'pose6q'
                 check_box.active = True
             elif 'flow' in topic:
                 spinner.text = 'flowMap'
+                check_box.active = True
+            elif 'cloud' in topic:
+                spinner.text = 'point3'
+                check_box.active = True
+            elif 'imu' in topic:
+                spinner.text = 'imu'
                 check_box.active = True
 
             self.add_widget(spinner)
