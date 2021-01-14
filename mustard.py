@@ -394,6 +394,9 @@ class Mustard(App):
     def build(self):
         return RootWidget()
 
-
+    def setData(self, newDataDict):
+        self.root.data_controller.data_dict = {}
+        self.root.data_controller.data_dict = newDataDict
+        
 if __name__ == '__main__':
     Mustard().run()
