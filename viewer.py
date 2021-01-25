@@ -69,7 +69,7 @@ class Viewer(BoxLayout):
     def on_visualisers(self, instance, value):
         if self.visualisers is not None and self.visualisers:
             for v in self.visualisers:  # TODO manage cases with multiple of below data_types
-                if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap']:
+                if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
                     self.colorfmt = v.get_colorfmt()
                     self.data_shape = v.get_dims()
                     buf_shape = (dp(self.data_shape[0]), dp(self.data_shape[1]))
@@ -125,7 +125,7 @@ class Viewer(BoxLayout):
 
     def on_data(self, instance, value):
         for data_type in self.data.keys():
-            if data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap']:
+            if data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
                 self.update_image(self.data[data_type])
             elif data_type in ['boundingBoxes']:
                 self.update_b_boxes(self.data[data_type])
