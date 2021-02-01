@@ -192,6 +192,9 @@ class DataController(GridLayout):
                 settings[data_type]['perspective'] = {'type': 'boolean',
                                                       'default': True
                                                       }
+                settings[data_type]['label_multiple_bodies'] = {'type': 'boolean',
+                                                      'default': True
+                                                      }
                 channel_name = channel_name + '\nred=x green=y, blue=z'
             elif data_type == 'point3':
                 visualiser = VisualiserPoint3(data_dict[data_type])
