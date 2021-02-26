@@ -2,6 +2,7 @@
 #:import os os
 #:import plt matplotlib.pyplot
 #:import math math
+
 <ConfigLabel@Label>
     size_hint_x: .8
 <ConfigSwitch@Switch>
@@ -254,7 +255,7 @@
         DataController:
             id: data_controller
             size_hint: 1, .9
-            orientation: 'horizontal'
+            orientation: 'lr-tb'
             spacing: 50
             file_path_and_name: ''
             time_value: time_slider.value
