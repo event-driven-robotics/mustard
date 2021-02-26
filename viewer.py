@@ -93,13 +93,15 @@ class Viewer(BoxLayout):
                     box = BoxLayout(orientation='vertical')
                     splitted = re.sub('([A-Z][a-z]+)', r' \1', re.sub('([A-Z]+)', r' \1', key)).title()
                     box.add_widget(Label(text='Settings for {}'.format(splitted), size_hint=(1, 0.1)))
-                    settings_grid = GridLayout(cols=2, id=key)
+                    settings_grid = GridLayout(cols=2)
+                    settings_grid.id = key
                     box.add_widget(settings_grid)
                     parent_widget.add_widget(box)
                     self.update_settings(settings_grid, settings_dict[key])
             elif settings_dict[key]['type'] == 'boolean':
                 parent_widget.add_widget(Label(text=key))
-                check_box = CheckBox(active=settings_dict[key]['default'], id=key)
+                check_box = CheckBox(active=settings_dict[key]['default'])
+                check_box.id = key
                 parent_widget.add_widget(check_box)
                 settings_dict[key] = check_box.active
                 check_box.bind(active=self.on_settings_change)
@@ -108,8 +110,8 @@ class Viewer(BoxLayout):
                 slider = Slider(value=settings_dict[key]['default'],
                                 min=settings_dict[key]['min'],
                                 max=settings_dict[key]['max'],
-                                step=settings_dict[key]['step'],
-                                id=key)
+                                step=settings_dict[key]['step'])
+                slider.id = key
                 parent_widget.add_widget(slider)
                 settings_dict[key] = slider.value
                 slider.bind(value=self.on_settings_change)
@@ -117,8 +119,8 @@ class Viewer(BoxLayout):
                 parent_widget.add_widget(Label(text=key))
                 from kivy.uix.spinner import Spinner
                 spinner = Spinner(text=settings_dict[key]['default'],
-                                  values=settings_dict[key]['values'],
-                                  id=key)
+                                  values=settings_dict[key]['values'])
+                spinner.id = key
                 parent_widget.add_widget(spinner)
                 settings_dict[key] = spinner.text
                 spinner.bind(text=self.on_settings_change)
