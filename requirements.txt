@@ -4,3 +4,4 @@ numpy
 tqdm
 imageio
 bimvee
+opencv-python

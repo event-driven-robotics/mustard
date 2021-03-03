@@ -24,10 +24,11 @@ from kivy.uix.widget import Widget
 from kivy.uix.slider import Slider
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
-from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictProperty
+from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictProperty, ObjectProperty
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
+from kivy.core.window import Window
 
 
 class BoundingBox(Widget):
@@ -57,6 +58,7 @@ class Viewer(BoxLayout):
     title = StringProperty('Title')
     colorfmt = 'luminance'
     orientation = 'vertical'
+    mouse_position = ObjectProperty()
 
     def __init__(self, **kwargs):
         super(Viewer, self).__init__(**kwargs)
@@ -65,6 +67,23 @@ class Viewer(BoxLayout):
         self.cm = get_cmap('tab20')
         self.current_time = 0
         self.current_time_window = 0
+        Window.bind(mouse_pos=self.on_mouse_pos)
+
+    def window_to_image_coords(self, x, y):
+        w_ratio = self.image.norm_image_size[0] / self.image.texture.width
+        h_ratio = self.image.norm_image_size[1] / self.image.texture.height
+
+        image_x = x - (self.image.center_x - self.image.norm_image_size[0] / 2)
+        image_y = y - (self.image.center_y - self.image.norm_image_size[1] / 2)
+
+        return image_x / w_ratio, image_y / h_ratio
+
+    def on_mouse_pos(self, window, pos):
+        image_x, image_y = self.window_to_image_coords(pos[0], pos[1])
+        if 0 <= image_x <= self.image.texture.width and 0 <= image_y <= self.image.texture.height:
+            self.mouse_position = int(image_x), int(self.image.texture.height - image_y)
+        else:
+            self.mouse_position = 0, 0
 
     def on_visualisers(self, instance, value):
         if self.visualisers is not None and self.visualisers:

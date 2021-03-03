@@ -147,6 +147,8 @@
             text: 'Image size: ' + str(image.texture_size)
             id: texture_size_label
             halign: 'center'
+        Label:
+            text: str(root.mouse_position)
     Image:
         id: image
         allow_stretch: True
