@@ -210,16 +210,17 @@ class Viewer(BoxLayout):
             try:
                 bb_color = self.cm.colors[b[4] % len(self.cm.colors)] + (1,)
                 label = b[4]
-                box_item = LabeledBoundingBox(id='box_{}'.format(n),
-                                              bb_color=bb_color,
+                box_item = LabeledBoundingBox(bb_color=bb_color,
                                               x=x, y=y,
                                               width=width, height=height,
                                               label=label)
             except IndexError:
-                box_item = BoundingBox(id='box_{}'.format(n),
-                                       bb_color=self.cm.colors[0],
+                box_item = BoundingBox(bb_color=self.cm.colors[0],
                                        x=x, y=y,
                                        width=width, height=height)
+
+            box_item.id='box_{}'.format(n),
+
             self.image.add_widget(box_item)
 
     def get_frame(self, time_value, time_window):
