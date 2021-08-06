@@ -75,6 +75,7 @@ except ModuleNotFoundError:
     from bimvee.visualiser import VisualiserBoundingBoxes
     from bimvee.visualiser import VisualiserOpticFlow
     from bimvee.timestamps import getLastTimestamp
+    from bimvee.visualiser import VisualiserHPE
 
 from viewer import Viewer
 
@@ -108,7 +109,7 @@ class DictEditor(GridLayout):
             check_box = CheckBox()
             self.add_widget(check_box)
             self.add_widget(TextInput(text=str(n)))
-            spinner = Spinner(values=['dvs', 'frame', 'pose6q', 'cam', 'imu', 'flowMap'])
+            spinner = Spinner(values=['dvs', 'frame', 'pose6q', 'cam', 'imu', 'flowMap', 'hpe'])
             if 'events' in topic:
                 spinner.text = 'dvs'
                 check_box.active = True
@@ -120,6 +121,9 @@ class DictEditor(GridLayout):
                 check_box.active = True
             elif 'flow' in topic:
                 spinner.text = 'flowMap'
+                check_box.active = True
+            elif 'hpe' in topic:
+                spinner.text = 'hpe'
                 check_box.active = True
 
             self.add_widget(spinner)
@@ -222,6 +226,41 @@ class DataController(GridLayout):
                                                       }
             elif data_type == 'flowMap':
                 visualiser = VisualiserOpticFlow(data_dict[data_type])
+            elif data_type == 'hpe':
+                visualiser = VisualiserHPE(data_dict[data_type])
+                # settings[data_type]['skeleton'] = {'type': 'boolean',
+                #                                     'default': True
+                #                                     }
+                settings[data_type]['skeleton'] = {'type': 'value_list',
+                                                      'default': 'None',
+                                                      'values': ['GT', 'Both', 'None']
+                                                      }
+                settings[data_type]['zoom'] = {'type': 'boolean',
+                                                    'default': False
+                                                    }
+                settings[data_type]['zoomFactor'] = {'type': 'range',
+                                                   'default': 9,
+                                                   'min': 4,
+                                                   'max': 15,
+                                                   'step': 1
+                                                   }
+                settings[data_type]['jointZoom'] = {'type': 'value_list',
+                                                      'default': list(data_dict['hpe']['skeleton']['gt'].keys())[0],
+                                                      'values': data_dict['hpe']['skeleton']['gt'].keys()
+                                                      }
+                settings[data_type]['polarised'] = {'type': 'boolean',
+                                                    'default': True
+                                                    }
+                settings[data_type]['contrast'] = {'type': 'range',
+                                                   'default': 3,
+                                                   'min': 1,
+                                                   'max': 20,
+                                                   'step': 1
+                                                   }
+                settings[data_type]['pol_to_show'] = {'type': 'value_list',
+                                                      'default': 'Both',
+                                                      'values': ['Pos', 'Neg', 'Both']
+                                                      }
             else:
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
                 continue
