@@ -152,7 +152,7 @@ class TemplateDialog(FloatLayout):
 class DataController(GridLayout):
     ending_time = NumericProperty(.0)
     filePathOrName = StringProperty('')
-    data_dict = DictProperty({})  # A bimvee-style container of channels
+    data_dict = ObjectProperty({})  # A bimvee-style container of channels
 
     def __init__(self, **kwargs):
         super(DataController, self).__init__(**kwargs)
@@ -303,6 +303,11 @@ class DataController(GridLayout):
         self._popup.open()
 
     def show_load(self):
+        # self.load(path='/data/gen3test/1/rightdvs/', selection=[])
+        # self.load(path='/data/gen3test/3/ATIS3/', selection=[])
+        # self.load(path='/data/air-hockey-motion-4/rightdvs', selection=[])
+
+        # return
         self.dismiss_popup()
         content = LoadDialog(load=self.load,
                              cancel=self.dismiss_popup)

@@ -149,11 +149,22 @@
             halign: 'center'
         Label:
             text: str(root.mouse_position)
-    Image:
-        id: image
-        allow_stretch: True
-        on_size: root.on_data
-        keep_ratio: True
+    BoxLayout:
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: 0.2, 0.5
+            Button:
+                text: "Flip vert"
+                on_press: root.flipVert = not root.flipVert
+            Button:
+                text: "Flip horiz"
+                on_press: root.flipHoriz = not root.flipHoriz
+        Image:
+            id: image
+            allow_stretch: True
+            on_size: root.on_data
+            keep_ratio: True
+
 
 <ControlButton@ButtonBehavior+Image>
 
