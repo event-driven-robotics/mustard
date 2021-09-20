@@ -3,6 +3,9 @@
 #:import plt matplotlib.pyplot
 #:import math math
 
+<Label>
+    font_size: '30sp'
+
 <ConfigLabel@Label>
     size_hint_x: .8
 <ConfigSwitch@Switch>
@@ -11,6 +14,8 @@
 <ConfigSlider@Slider>
     size_hint: .2, .3
     orientation: 'vertical'
+
+<ControlButton@ButtonBehavior+Image>
 
 <BoundingBox@Widget>:
     bb: 0.0, 0.0, 0.0, 0.0
@@ -149,24 +154,29 @@
             halign: 'center'
         Label:
             text: str(root.mouse_position)
-    BoxLayout:
-        BoxLayout:
-            orientation: 'vertical'
-            size_hint: 0.2, 0.5
-            Button:
-                text: "Flip vert"
-                on_press: root.flipVert = not root.flipVert
-            Button:
-                text: "Flip horiz"
-                on_press: root.flipHoriz = not root.flipHoriz
+    RelativeLayout:
+        size_hint: 1, 0.9
         Image:
             id: image
             allow_stretch: True
             on_size: root.on_data
             keep_ratio: True
-
-
-<ControlButton@ButtonBehavior+Image>
+        BoxLayout:
+            pos: image.center_x - (image.norm_image_size[0] / 2) , image.center_y + (image.norm_image_size[1] / 2) - self.height
+            orientation: 'vertical'
+            size_hint: None, 0.1
+            ControlButton:
+                id: flip_vert_button
+                source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
+                text: "Flip vert"
+                on_press: self.source='graphics/flip_vert_off.png'; root.flipVert = not root.flipVert; root.on_data(None, None)
+                on_release:  self.source='graphics/flip_vert.png';
+            ControlButton:
+                id: flip_horiz_button
+                source: 'graphics/flip_horiz_off.png' if self.disabled else 'graphics/flip_horiz.png'
+                text: "Flip horiz"
+                on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
+                on_release:  self.source='graphics/flip_horiz.png';
 
 <RootWidget>
     orientation:'horizontal'
@@ -213,7 +223,7 @@
             cols: 2
             id: controls
             size_hint_y: .35
-            spacing: 5
+            spacing: 20
             ControlButton:
                 #disabled: not hasattr(data_controller.data_dict, 'data')
                 id: play_button
