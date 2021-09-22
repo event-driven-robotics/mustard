@@ -143,6 +143,7 @@
     image: image
     spacing: 5
     BoxLayout:
+        id: header
         size_hint: 1, 0.1
         Label:
             text: 'Channel: ' + root.title
@@ -154,29 +155,28 @@
             halign: 'center'
         Label:
             text: str(root.mouse_position)
-    RelativeLayout:
-        size_hint: 1, 0.9
-        Image:
-            id: image
-            allow_stretch: True
-            on_size: root.on_data
-            keep_ratio: True
-        BoxLayout:
-            pos: image.center_x - (image.norm_image_size[0] / 2) , image.center_y + (image.norm_image_size[1] / 2) - self.height
-            orientation: 'vertical'
-            size_hint: None, 0.1
-            ControlButton:
-                id: flip_vert_button
-                source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
-                text: "Flip vert"
-                on_press: self.source='graphics/flip_vert_off.png'; root.flipVert = not root.flipVert; root.on_data(None, None)
-                on_release:  self.source='graphics/flip_vert.png';
-            ControlButton:
-                id: flip_horiz_button
-                source: 'graphics/flip_horiz_off.png' if self.disabled else 'graphics/flip_horiz.png'
-                text: "Flip horiz"
-                on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
-                on_release:  self.source='graphics/flip_horiz.png';
+    Image:
+        pos: header.x, header.y - self.norm_image_size[1]
+        id: image
+        allow_stretch: True
+        on_size: root.on_data
+        keep_ratio: True
+    BoxLayout:
+        pos: image.center_x - (image.norm_image_size[0] / 2) , image.center_y + (image.norm_image_size[1] / 2) - self.height
+        orientation: 'vertical'
+        size_hint: None, 0.1
+        ControlButton:
+            id: flip_vert_button
+            source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
+            text: "Flip vert"
+            on_press: self.source='graphics/flip_vert_off.png'; root.flipVert = not root.flipVert; root.on_data(None, None)
+            on_release:  self.source='graphics/flip_vert.png';
+        ControlButton:
+            id: flip_horiz_button
+            source: 'graphics/flip_horiz_off.png' if self.disabled else 'graphics/flip_horiz.png'
+            text: "Flip horiz"
+            on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
+            on_release:  self.source='graphics/flip_horiz.png';
 
 <RootWidget>
     orientation:'horizontal'
