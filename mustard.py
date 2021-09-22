@@ -215,6 +215,9 @@ class DataController(GridLayout):
                 settings[data_type]['with_labels'] = {'type': 'boolean',
                                                       'default': True
                                                       }
+                settings[data_type]['show_bounding_boxes'] = {'type': 'boolean',
+                                                              'default': True
+                                                              }
             elif data_type == 'flowMap':
                 visualiser = VisualiserOpticFlow(data_dict[data_type])
             elif data_type == 'imu':
@@ -303,11 +306,8 @@ class DataController(GridLayout):
         self._popup.open()
 
     def show_load(self):
-        # self.load(path='/data/gen3test/1/rightdvs/', selection=[])
-        # self.load(path='/data/gen3test/3/ATIS3/', selection=[])
-        # self.load(path='/data/air-hockey-motion-4/rightdvs', selection=[])
-
-        # return
+        self.load(path='/home/miacono/datasets/air-hockey-3-after-vPreProcess', selection=None)
+        return
         self.dismiss_popup()
         content = LoadDialog(load=self.load,
                              cancel=self.dismiss_popup)
