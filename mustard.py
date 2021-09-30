@@ -168,9 +168,10 @@ class DataController(GridLayout):
             settings[data_type] = {}
             if data_type == 'dvs':
                 visualiser = VisualiserDvs(data_dict[data_type])
-                settings[data_type]['polarised'] = {'type': 'boolean',
-                                                    'default': True
-                                                    }
+                settings[data_type]['image_type'] = {'type': 'value_list',
+                                                      'default': 'polarized',
+                                                      'values': ['polarized', 'not_polarized', 'time_image']
+                                                      }
                 settings[data_type]['contrast'] = {'type': 'range',
                                                    'default': 3,
                                                    'min': 1,
@@ -306,7 +307,7 @@ class DataController(GridLayout):
         self._popup.open()
 
     def show_load(self):
-        self.load(path='/home/miacono/datasets/air-hockey-3-after-vPreProcess', selection=None)
+        self.load(path='/media/miacono/Shared/datasets/air-hockey-3-after-vPreProcess', selection=[])
         return
         self.dismiss_popup()
         content = LoadDialog(load=self.load,

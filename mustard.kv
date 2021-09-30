@@ -162,7 +162,7 @@
         on_size: root.on_data
         keep_ratio: True
     BoxLayout:
-        pos: image.center_x - (image.norm_image_size[0] / 2) , image.center_y + (image.norm_image_size[1] / 2) - self.height
+        pos: image.center_x - (image.norm_image_size[0] / 2) - self.width, image.center_y + (image.norm_image_size[1] / 2) - self.height
         orientation: 'vertical'
         size_hint: None, 0.1
         ControlButton:
