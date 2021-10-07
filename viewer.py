@@ -108,16 +108,8 @@ class Viewer(BoxLayout):
                     'maxY': np.array([self.mouse_position[1] + 10]),
                     'maxX': np.array([self.mouse_position[0] + 10])
                 }
-                settings = {}
-                settings = {}
-                settings['with_labels'] = {'type': 'boolean',
-                                                            'default': True
-                                                            }
-                settings['show_bounding_boxes'] = {'type': 'boolean',
-                                                                    'default': True
-                                                                    }
-                self.settings['boundingBoxes'] = settings
                 viz = VisualiserBoundingBoxes(data_dict)
+                self.settings['boundingBoxes'] = viz.get_settings()
                 self.visualisers.append(viz)
             else:
                 data_dict['ts'] = np.append(data_dict['ts'], self.current_time)
