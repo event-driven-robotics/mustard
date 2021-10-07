@@ -164,7 +164,7 @@
     BoxLayout:
         pos: image.center_x - (image.norm_image_size[0] / 2) - self.width, image.center_y + (image.norm_image_size[1] / 2) - self.height
         orientation: 'vertical'
-        size_hint: None, 0.1
+        size_hint: None, 0.15
         ControlButton:
             id: flip_vert_button
             source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
@@ -177,6 +177,9 @@
             text: "Flip horiz"
             on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
             on_release:  self.source='graphics/flip_horiz.png';
+        Button:
+            text: 'Label'
+            on_release: root.labeling = not root.labeling; print(root.labeling)
 
 <RootWidget>
     orientation:'horizontal'

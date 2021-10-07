@@ -29,6 +29,7 @@ from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.core.window import Window
+from bimvee.visualisers.visualiserBoundingBoxes import VisualiserBoundingBoxes
 
 
 class BoundingBox(Widget):
@@ -54,7 +55,9 @@ class Viewer(BoxLayout):
     visualisers = ListProperty([], allownone=True)
     flipHoriz = BooleanProperty(False)
     flipVert = BooleanProperty(False)
+    labeling = BooleanProperty(False)
     settings = DictProperty({}, allownone=True)
+    settings_values = DictProperty({}, allownone=True)
     title = StringProperty('Title')
     colorfmt = 'luminance'
     orientation = 'vertical'
@@ -85,6 +88,46 @@ class Viewer(BoxLayout):
         else:
             self.mouse_position = 0, 0
 
+    def on_touch_down(self, touch):
+        if super(Viewer, self).on_touch_down(touch):
+            return True
+        if self.labeling:
+            data_dict = None
+            viz = None
+            for v in self.visualisers:
+                if isinstance(v, VisualiserBoundingBoxes):
+                    data_dict = v.get_data()
+                    viz = v
+                    break
+            if data_dict is None:
+
+                data_dict = {
+                    'ts':   np.array([self.current_time]),
+                    'minY': np.array([self.mouse_position[1] - 10]),
+                    'minX': np.array([self.mouse_position[0] - 10]),
+                    'maxY': np.array([self.mouse_position[1] + 10]),
+                    'maxX': np.array([self.mouse_position[0] + 10])
+                }
+                settings = {}
+                settings = {}
+                settings['with_labels'] = {'type': 'boolean',
+                                                            'default': True
+                                                            }
+                settings['show_bounding_boxes'] = {'type': 'boolean',
+                                                                    'default': True
+                                                                    }
+                self.settings['boundingBoxes'] = settings
+                viz = VisualiserBoundingBoxes(data_dict)
+                self.visualisers.append(viz)
+            else:
+                data_dict['ts'] = np.append(data_dict['ts'], self.current_time)
+                data_dict['minY'] = np.append(data_dict['minY'], self.mouse_position[1] - 10)
+                data_dict['minX'] = np.append(data_dict['minX'], self.mouse_position[0] - 10)
+                data_dict['maxY'] = np.append(data_dict['maxY'], self.mouse_position[1] + 10)
+                data_dict['maxX'] = np.append(data_dict['maxX'], self.mouse_position[0] + 10)
+            viz.set_data(data_dict)
+            self.get_frame(self.current_time, self.current_time_window)
+
     def on_visualisers(self, instance, value):
         if self.visualisers is not None and self.visualisers:
             for v in self.visualisers:  # TODO manage cases with multiple of below data_types
@@ -96,16 +139,16 @@ class Viewer(BoxLayout):
 
     def on_settings(self, instance, settings_dict):
         if self.settings_box is not None:
-            self.clear_widgets(self.settings_box)
+            self.settings_box.clear_widgets()
         self.settings_box = BoxLayout(size_hint=(1, 0.4))
         self.add_widget(self.settings_box)
-        self.update_settings(self.settings_box, settings_dict)
+        self.update_settings(self.settings_box, settings_dict, self.settings_values)
 
     def on_settings_change(self, instance, value):
-        self.settings[instance.parent.id][instance.id] = value
+        self.settings_values[instance.parent.id][instance.id] = value
         self.get_frame(self.current_time, self.current_time_window)
 
-    def update_settings(self, parent_widget, settings_dict):
+    def update_settings(self, parent_widget, settings_dict, settings_values):
         for key in settings_dict:
             if 'type' not in settings_dict[key]:
                 if settings_dict[key]:
@@ -116,13 +159,14 @@ class Viewer(BoxLayout):
                     settings_grid.id = key
                     box.add_widget(settings_grid)
                     parent_widget.add_widget(box)
-                    self.update_settings(settings_grid, settings_dict[key])
+                    settings_values[key] = {}
+                    self.update_settings(settings_grid, settings_dict[key], settings_values[key])
             elif settings_dict[key]['type'] == 'boolean':
                 parent_widget.add_widget(Label(text=key))
                 check_box = CheckBox(active=settings_dict[key]['default'])
                 check_box.id = key
                 parent_widget.add_widget(check_box)
-                settings_dict[key] = check_box.active
+                settings_values[key] = check_box.active
                 check_box.bind(active=self.on_settings_change)
             elif settings_dict[key]['type'] == 'range':
                 parent_widget.add_widget(Label(text=key))
@@ -132,7 +176,7 @@ class Viewer(BoxLayout):
                                 step=settings_dict[key]['step'])
                 slider.id = key
                 parent_widget.add_widget(slider)
-                settings_dict[key] = slider.value
+                settings_values[key] = slider.value
                 slider.bind(value=self.on_settings_change)
             elif settings_dict[key]['type'] == 'value_list':
                 parent_widget.add_widget(Label(text=key))
@@ -141,7 +185,7 @@ class Viewer(BoxLayout):
                                   values=settings_dict[key]['values'])
                 spinner.id = key
                 parent_widget.add_widget(spinner)
-                settings_dict[key] = spinner.text
+                settings_values[key] = spinner.text
                 spinner.bind(text=self.on_settings_change)
 
     def on_data(self, instance, value):
@@ -219,7 +263,7 @@ class Viewer(BoxLayout):
                                        x=x, y=y,
                                        width=width, height=height)
 
-            box_item.id='box_{}'.format(n),
+            box_item.id = 'box_{}'.format(n),
 
             self.image.add_widget(box_item)
 
@@ -229,5 +273,5 @@ class Viewer(BoxLayout):
         self.current_time_window = time_window
         for v in self.visualisers:
             data_dict[v.data_type] = {}
-            data_dict[v.data_type] = v.get_frame(time_value, time_window, **self.settings[v.data_type])
+            data_dict[v.data_type] = v.get_frame(time_value, time_window, **self.settings_values[v.data_type])
         self.data.update(data_dict)
