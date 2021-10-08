@@ -178,8 +178,14 @@
             on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
             on_release:  self.source='graphics/flip_horiz.png';
         Button:
-            text: 'Label'
-            on_release: root.labeling = not root.labeling; print(root.labeling)
+            text: 'Label' if not root.labeling else 'Save'
+            on_release: root.save_bboxes(app.root.data_controller.filePathOrName); root.labeling = not root.labeling
+        Button:
+            text: 'Undo'
+            on_release: root.remove_last_bbox()
+        Label:
+            id: label_status
+            text: 'Labeling ' + str(root.label) if root.labeling else ''
 
 <RootWidget>
     orientation:'horizontal'

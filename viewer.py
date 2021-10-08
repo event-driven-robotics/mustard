@@ -24,13 +24,13 @@ from kivy.uix.widget import Widget
 from kivy.uix.slider import Slider
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
-from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictProperty, ObjectProperty
+from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictProperty, NumericProperty
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.core.window import Window
 from bimvee.visualisers.visualiserBoundingBoxes import VisualiserBoundingBoxes
-
+import os
 
 class BoundingBox(Widget):
     def __init__(self, bb_color, x, y, width, height, **kwargs):
@@ -61,7 +61,8 @@ class Viewer(BoxLayout):
     title = StringProperty('Title')
     colorfmt = 'luminance'
     orientation = 'vertical'
-    mouse_position = ObjectProperty()
+    mouse_position = ListProperty([0, 0])
+    label = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super(Viewer, self).__init__(**kwargs)
@@ -73,7 +74,7 @@ class Viewer(BoxLayout):
         Window.bind(mouse_pos=self.on_mouse_pos)
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self, 'number')
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
-        self.label = 0
+        self.clicked_mouse_pos = None
 
     def window_to_image_coords(self, x, y):
         w_ratio = self.image.norm_image_size[0] / self.image.texture.width
@@ -86,10 +87,70 @@ class Viewer(BoxLayout):
 
     def on_mouse_pos(self, window, pos):
         image_x, image_y = self.window_to_image_coords(pos[0], pos[1])
-        if 0 <= image_x <= self.image.texture.width and 0 <= image_y <= self.image.texture.height:
-            self.mouse_position = int(image_x), int(self.image.texture.height - image_y)
-        else:
-            self.mouse_position = 0, 0
+        if 0 <= image_x <= self.image.texture.width:
+            self.mouse_position[0] = int(image_x)
+        elif image_x < 0:
+            self.mouse_position[0] = 0
+        elif image_x > self.image.texture.width:
+            self.mouse_position[0] = self.image.texture.width
+        if 0 <= image_y <= self.image.texture.height:
+            self.mouse_position[1] = int(self.image.texture.height - image_y)
+        elif image_y < 0:
+            self.mouse_position[1] = self.image.texture.height
+        elif image_y > self.image.texture.height:
+            self.mouse_position[1] = 0
+
+    def remove_last_bbox(self):
+        for v in self.visualisers:
+            if isinstance(v, VisualiserBoundingBoxes):
+                data_dict = v.get_data()
+                for d in data_dict:
+                    try:
+                        data_dict[d] = np.delete(data_dict[d], -1)
+                    except IndexError:
+                        return
+                v.set_data(data_dict)
+                self.get_frame(self.current_time, self.current_time_window)
+
+    def save_bboxes(self, path):
+        if self.labeling:
+            data_dict = None
+            for v in self.visualisers:
+                if isinstance(v, VisualiserBoundingBoxes):
+                    data_dict = v.get_data()
+                    break
+            if data_dict is None:
+                return
+            np.savetxt(os.path.join(path, 'ground_truth.csv'), np.column_stack(data_dict.values())) #TODO control format
+
+    def on_touch_move(self, touch):
+        if self.clicked_mouse_pos is not None:
+            for v in self.visualisers:
+                if isinstance(v, VisualiserBoundingBoxes):
+                    data_dict = v.get_data()
+                    viz = v
+                    break
+
+            data_dict['ts'][-1] = self.current_time
+            data_dict['minY'][-1] = min(self.mouse_position[1], self.clicked_mouse_pos[1])
+            data_dict['maxY'][-1] = max(self.mouse_position[1], self.clicked_mouse_pos[1])
+            data_dict['minX'][-1] = min(self.mouse_position[0], self.clicked_mouse_pos[0])
+            data_dict['maxX'][-1] = max(self.mouse_position[0], self.clicked_mouse_pos[0])
+            viz.set_data(data_dict)
+            self.get_frame(self.current_time, self.current_time_window)
+        return False
+
+    def on_touch_up(self, touch):
+        self.clicked_mouse_pos = None
+        for v in self.visualisers:
+            if isinstance(v, VisualiserBoundingBoxes):
+                data_dict = v.get_data()
+                try:
+                    if data_dict['minY'][-1] == data_dict['maxY'][-1] or data_dict['minX'][-1] == data_dict['maxX'][-1]:
+                        self.remove_last_bbox()
+                except IndexError:
+                    pass
+        return False
 
     def on_touch_down(self, touch):
         if super(Viewer, self).on_touch_down(touch):
@@ -106,10 +167,10 @@ class Viewer(BoxLayout):
 
                 data_dict = {
                     'ts':   np.array([self.current_time]),
-                    'minY': np.array([self.mouse_position[1] - 10]),
-                    'minX': np.array([self.mouse_position[0] - 10]),
-                    'maxY': np.array([self.mouse_position[1] + 10]),
-                    'maxX': np.array([self.mouse_position[0] + 10]),
+                    'minY': np.array([self.mouse_position[1]]),
+                    'minX': np.array([self.mouse_position[0]]),
+                    'maxY': np.array([self.mouse_position[1]]),
+                    'maxX': np.array([self.mouse_position[0]]),
                     'label': np.array([self.label])
                 }
                 viz = VisualiserBoundingBoxes(data_dict)
@@ -117,10 +178,10 @@ class Viewer(BoxLayout):
                 self.visualisers.append(viz)
             else:
                 data_dict['ts'] = np.append(data_dict['ts'], self.current_time)
-                data_dict['minY'] = np.append(data_dict['minY'], self.mouse_position[1] - 10)
-                data_dict['minX'] = np.append(data_dict['minX'], self.mouse_position[0] - 10)
-                data_dict['maxY'] = np.append(data_dict['maxY'], self.mouse_position[1] + 10)
-                data_dict['maxX'] = np.append(data_dict['maxX'], self.mouse_position[0] + 10)
+                data_dict['minY'] = np.append(data_dict['minY'], self.mouse_position[1])
+                data_dict['minX'] = np.append(data_dict['minX'], self.mouse_position[0])
+                data_dict['maxY'] = np.append(data_dict['maxY'], self.mouse_position[1])
+                data_dict['maxX'] = np.append(data_dict['maxX'], self.mouse_position[0])
                 data_dict['label'] = np.append(data_dict['label'], self.label)
             # Sorting wrt timestamps
             argsort = np.argsort(data_dict['ts'])
@@ -129,6 +190,8 @@ class Viewer(BoxLayout):
 
             viz.set_data(data_dict)
             self.get_frame(self.current_time, self.current_time_window)
+            self.clicked_mouse_pos = self.mouse_position[0], self.mouse_position[1]
+        return False
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         try:
