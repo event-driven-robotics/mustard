@@ -71,6 +71,9 @@ class Viewer(BoxLayout):
         self.current_time = 0
         self.current_time_window = 0
         Window.bind(mouse_pos=self.on_mouse_pos)
+        self._keyboard = Window.request_keyboard(self._keyboard_closed, self, 'number')
+        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+        self.label = 0
 
     def window_to_image_coords(self, x, y):
         w_ratio = self.image.norm_image_size[0] / self.image.texture.width
@@ -106,7 +109,8 @@ class Viewer(BoxLayout):
                     'minY': np.array([self.mouse_position[1] - 10]),
                     'minX': np.array([self.mouse_position[0] - 10]),
                     'maxY': np.array([self.mouse_position[1] + 10]),
-                    'maxX': np.array([self.mouse_position[0] + 10])
+                    'maxX': np.array([self.mouse_position[0] + 10]),
+                    'label': np.array([self.label])
                 }
                 viz = VisualiserBoundingBoxes(data_dict)
                 self.settings['boundingBoxes'] = viz.get_settings()
@@ -117,8 +121,26 @@ class Viewer(BoxLayout):
                 data_dict['minX'] = np.append(data_dict['minX'], self.mouse_position[0] - 10)
                 data_dict['maxY'] = np.append(data_dict['maxY'], self.mouse_position[1] + 10)
                 data_dict['maxX'] = np.append(data_dict['maxX'], self.mouse_position[0] + 10)
+                data_dict['label'] = np.append(data_dict['label'], self.label)
+            # Sorting wrt timestamps
+            argsort = np.argsort(data_dict['ts'])
+            for d in data_dict:
+                data_dict[d] = data_dict[d][argsort]
+
             viz.set_data(data_dict)
             self.get_frame(self.current_time, self.current_time_window)
+
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        try:
+            self.label = int(keycode[1][-1])
+        except ValueError:
+            return False
+        # Return True to accept the key. Otherwise, it will be used by the system.
+        return True
+
+    def _keyboard_closed(self):
+        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        del self._keyboard
 
     def on_visualisers(self, instance, value):
         if self.visualisers is not None and self.visualisers:
@@ -246,6 +268,8 @@ class Viewer(BoxLayout):
             try:
                 bb_color = self.cm.colors[b[4] % len(self.cm.colors)] + (1,)
                 label = b[4]
+                if label == 0:  # Label = 0 is considered as unlabeled
+                    raise IndexError
                 box_item = LabeledBoundingBox(bb_color=bb_color,
                                               x=x, y=y,
                                               width=width, height=height,
