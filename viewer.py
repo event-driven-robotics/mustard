@@ -56,6 +56,7 @@ class Viewer(BoxLayout):
     flipHoriz = BooleanProperty(False)
     flipVert = BooleanProperty(False)
     labeling = BooleanProperty(False)
+    mouse_on_image = BooleanProperty(False)
     settings = DictProperty({}, allownone=True)
     settings_values = DictProperty({}, allownone=True)
     title = StringProperty('Title')
@@ -75,6 +76,7 @@ class Viewer(BoxLayout):
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self, 'number')
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self.clicked_mouse_pos = None
+        self.last_added_box = -1
 
     def window_to_image_coords(self, x, y):
         w_ratio = self.image.norm_image_size[0] / self.image.texture.width
@@ -91,18 +93,23 @@ class Viewer(BoxLayout):
 
     def on_mouse_pos(self, window, pos):
         image_x, image_y = self.window_to_image_coords(pos[0], pos[1])
+        self.mouse_on_image = True
         if 0 <= image_x <= self.image.texture.width:
             self.mouse_position[0] = int(image_x)
         elif image_x < 0:
             self.mouse_position[0] = 0
+            self.mouse_on_image = False
         elif image_x > self.image.texture.width:
             self.mouse_position[0] = self.image.texture.width
+            self.mouse_on_image = False
         if 0 <= image_y <= self.image.texture.height:
             self.mouse_position[1] = int(self.image.texture.height - image_y)
         elif image_y < 0:
             self.mouse_position[1] = self.image.texture.height
+            self.mouse_on_image = False
         elif image_y > self.image.texture.height:
             self.mouse_position[1] = 0
+            self.mouse_on_image = False
 
     def remove_last_bbox(self):
         for v in self.visualisers:
@@ -110,7 +117,7 @@ class Viewer(BoxLayout):
                 data_dict = v.get_data()
                 for d in data_dict:
                     try:
-                        data_dict[d] = np.delete(data_dict[d], -1)
+                        data_dict[d] = np.delete(data_dict[d], self.last_added_box)
                     except IndexError:
                         return
                 v.set_data(data_dict)
@@ -141,11 +148,11 @@ class Viewer(BoxLayout):
                     viz = v
                     break
 
-            data_dict['ts'][-1] = self.current_time
-            data_dict['minY'][-1] = min(self.mouse_position[1], self.clicked_mouse_pos[1])
-            data_dict['maxY'][-1] = max(self.mouse_position[1], self.clicked_mouse_pos[1])
-            data_dict['minX'][-1] = min(self.mouse_position[0], self.clicked_mouse_pos[0])
-            data_dict['maxX'][-1] = max(self.mouse_position[0], self.clicked_mouse_pos[0])
+            data_dict['ts'][self.last_added_box] = self.current_time
+            data_dict['minY'][self.last_added_box] = min(self.mouse_position[1], self.clicked_mouse_pos[1])
+            data_dict['maxY'][self.last_added_box] = max(self.mouse_position[1], self.clicked_mouse_pos[1])
+            data_dict['minX'][self.last_added_box] = min(self.mouse_position[0], self.clicked_mouse_pos[0])
+            data_dict['maxX'][self.last_added_box] = max(self.mouse_position[0], self.clicked_mouse_pos[0])
             viz.set_data(data_dict)
             self.get_frame(self.current_time, self.current_time_window)
         return False
@@ -165,6 +172,8 @@ class Viewer(BoxLayout):
     def on_touch_down(self, touch):
         if super(Viewer, self).on_touch_down(touch):
             return True
+        if not self.mouse_on_image:
+            return False
         if self.labeling:
             data_dict = None
             viz = None
@@ -195,6 +204,7 @@ class Viewer(BoxLayout):
                 data_dict['label'] = np.append(data_dict['label'], self.label)
             # Sorting wrt timestamps
             argsort = np.argsort(data_dict['ts'])
+            self.last_added_box = np.argmax(argsort)
             for d in data_dict:
                 if hasattr(data_dict[d], '__len__'):
                     data_dict[d] = data_dict[d][argsort]
