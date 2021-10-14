@@ -117,7 +117,10 @@ class Viewer(BoxLayout):
                 data_dict = v.get_data()
                 for d in data_dict:
                     try:
-                        data_dict[d] = np.delete(data_dict[d], self.last_added_box)
+                        if self.last_added_box != -1:
+                            data_dict[d] = np.delete(data_dict[d], self.last_added_box)
+                        else:
+                            return  # TODO you can only undo the very last added box
                     except IndexError:
                         return
                 v.set_data(data_dict)
