@@ -80,10 +80,14 @@ class Viewer(BoxLayout):
         w_ratio = self.image.norm_image_size[0] / self.image.texture.width
         h_ratio = self.image.norm_image_size[1] / self.image.texture.height
 
-        image_x = x - (self.image.center_x - self.image.norm_image_size[0] / 2)
-        image_y = y - (self.image.center_y - self.image.norm_image_size[1] / 2)
+        image_x = (x - (self.image.center_x - self.image.norm_image_size[0] / 2)) / w_ratio
+        image_y = (y - (self.image.center_y - self.image.norm_image_size[1] / 2)) / h_ratio
 
-        return image_x / w_ratio, image_y / h_ratio
+        if self.flipHoriz:
+            image_x = self.image.texture.width - image_x
+        if self.flipVert:
+            image_y = self.image.texture.height - image_y
+        return image_x, image_y
 
     def on_mouse_pos(self, window, pos):
         image_x, image_y = self.window_to_image_coords(pos[0], pos[1])
@@ -121,7 +125,7 @@ class Viewer(BoxLayout):
                     break
             if data_dict is None:
                 return
-            np.savetxt(os.path.join(path, 'ground_truth.csv'), np.column_stack(data_dict.values())) #TODO control format
+            np.savetxt(os.path.join(path, 'ground_truth.csv'), np.column_stack(data_dict.values()), fmt='%f')
 
     def on_touch_move(self, touch):
         if self.clicked_mouse_pos is not None:
@@ -186,7 +190,8 @@ class Viewer(BoxLayout):
             # Sorting wrt timestamps
             argsort = np.argsort(data_dict['ts'])
             for d in data_dict:
-                data_dict[d] = data_dict[d][argsort]
+                if hasattr(data_dict[d], '__len__'):
+                    data_dict[d] = data_dict[d][argsort]
 
             viz.set_data(data_dict)
             self.get_frame(self.current_time, self.current_time_window)
