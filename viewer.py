@@ -125,7 +125,13 @@ class Viewer(BoxLayout):
                     break
             if data_dict is None:
                 return
-            np.savetxt(os.path.join(path, 'ground_truth.csv'), np.column_stack(data_dict.values()), fmt='%f')
+            np.savetxt(os.path.join(path, 'ground_truth.csv'), np.column_stack((data_dict['ts'],
+                                                                               data_dict['minY'],
+                                                                               data_dict['maxY'],
+                                                                               data_dict['minX'],
+                                                                               data_dict['maxX'],
+                                                                               data_dict['label']
+                                                                               )), fmt='%f')
 
     def on_touch_move(self, touch):
         if self.clicked_mouse_pos is not None:
