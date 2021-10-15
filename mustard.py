@@ -255,9 +255,6 @@ class DataController(GridLayout):
         self._popup.open()
 
     def show_load(self):
-
-        self.load('/home/miacono/datasets/air-hockey-3-after-vPreProcess', selection=None)
-        return
         self.dismiss_popup()
         content = LoadDialog(load=self.load,
                              cancel=self.dismiss_popup)
