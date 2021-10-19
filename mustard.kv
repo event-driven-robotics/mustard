@@ -155,37 +155,48 @@
             halign: 'center'
         Label:
             text: str(root.mouse_position)
-    Image:
-        pos: header.x, header.y - self.norm_image_size[1]
-        id: image
-        allow_stretch: True
-        on_size: root.on_data
-        keep_ratio: True
     BoxLayout:
-        pos: image.center_x - (image.norm_image_size[0] / 2) - self.width, image.center_y + (image.norm_image_size[1] / 2) - self.height
-        orientation: 'vertical'
-        size_hint: None, 0.15
-        ControlButton:
-            id: flip_vert_button
-            source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
-            text: "Flip vert"
-            on_press: self.source='graphics/flip_vert_off.png'; root.flipVert = not root.flipVert; root.on_data(None, None)
-            on_release:  self.source='graphics/flip_vert.png';
-        ControlButton:
-            id: flip_horiz_button
-            source: 'graphics/flip_horiz_off.png' if self.disabled else 'graphics/flip_horiz.png'
-            text: "Flip horiz"
-            on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
-            on_release:  self.source='graphics/flip_horiz.png';
-        Button:
-            text: 'Label' if not root.labeling else 'Save'
-            on_release: root.save_bboxes(app.root.data_controller.filePathOrName); root.labeling = not root.labeling
-        Button:
-            text: 'Undo'
-            on_release: root.remove_last_bbox()
-        Label:
-            id: label_status
-            text: 'Labeling ' + str(root.label) if root.labeling else ''
+        orientation: 'horizontal'
+        spacing: 5
+        BoxLayout:
+            orientation: 'vertical'
+            BoxLayout:
+                Image:
+                    id: image
+                    allow_stretch: True
+                    on_size: root.on_data
+                    keep_ratio: True
+                BoxLayout:
+                    id: viewer_buttons
+                    orientation: 'vertical'
+                    size_hint: None, 0.30
+                    spacing: 2
+                    padding: 10, 0, 0, int((image.height - image.norm_image_size[1]) / 2)
+                    ControlButton:
+                        id: flip_vert_button
+                        source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
+                        text: "Flip vert"
+                        on_press: self.source='graphics/flip_vert_off.png'; root.flipVert = not root.flipVert; root.on_data(None, None)
+                        on_release:  self.source='graphics/flip_vert.png';
+                    ControlButton:
+                        id: flip_horiz_button
+                        source: 'graphics/flip_horiz_off.png' if self.disabled else 'graphics/flip_horiz.png'
+                        text: "Flip horiz"
+                        on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
+                        on_release:  self.source='graphics/flip_horiz.png';
+                    Button:
+                        text: 'Annotate' if not root.labeling else 'Save'
+                        on_release: root.save_bboxes(app.root.data_controller.filePathOrName); root.labeling = not root.labeling
+                    Button:
+                        text: 'Undo'
+                        disabled: not root.labeling
+                        on_release: root.remove_last_bbox()
+            Label:
+                size_hint: 1, 0.05
+                id: label_status
+                text: 'Use num keys to change tag. Labeling {}'.format(str(root.label)) if root.labeling else ''
+
+
 
 <RootWidget>
     orientation:'horizontal'
@@ -232,7 +243,7 @@
             cols: 2
             id: controls
             size_hint_y: .35
-            spacing: 20
+            spacing: 2
             ControlButton:
                 #disabled: not hasattr(data_controller.data_dict, 'data')
                 id: play_button

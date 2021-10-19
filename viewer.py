@@ -241,7 +241,7 @@ class Viewer(BoxLayout):
     def on_settings(self, instance, settings_dict):
         if self.settings_box is not None:
             self.settings_box.clear_widgets()
-        self.settings_box = BoxLayout(size_hint=(1, 0.4))
+        self.settings_box = BoxLayout(size_hint=(1, 0.2), spacing=5)
         self.add_widget(self.settings_box)
         self.update_settings(self.settings_box, settings_dict, self.settings_values)
 
@@ -253,7 +253,7 @@ class Viewer(BoxLayout):
         for key in settings_dict:
             if 'type' not in settings_dict[key]:
                 if settings_dict[key]:
-                    box = BoxLayout(orientation='vertical')
+                    box = BoxLayout(orientation='vertical', spacing=5)
                     splitted = re.sub('([A-Z][a-z]+)', r' \1', re.sub('([A-Z]+)', r' \1', key)).title()
                     box.add_widget(Label(text='Settings for {}'.format(splitted), size_hint=(1, 0.1)))
                     settings_grid = GridLayout(cols=2)
