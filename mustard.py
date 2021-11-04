@@ -64,6 +64,7 @@ try:
     from visualiser import VisualiserPose6q
     from visualiser import VisualiserBoundingBoxes
     from visualiser import VisualiserOpticFlow
+    from visualiser import VisualiserImu
     from timestamps import getLastTimestamp
 except ModuleNotFoundError:
     if __package__ is None or __package__ == '':
@@ -74,6 +75,7 @@ except ModuleNotFoundError:
     from bimvee.visualiser import VisualiserPose6q
     from bimvee.visualiser import VisualiserBoundingBoxes
     from bimvee.visualiser import VisualiserOpticFlow
+    from bimvee.visualiser import VisualiserImu
     from bimvee.timestamps import getLastTimestamp
     from bimvee.visualiser import VisualiserHPE
 
@@ -102,7 +104,7 @@ class DictEditor(GridLayout):
     dict = DictProperty(None)
 
     def on_dict(self, instance, value):
-        # 2020_03_10 Sim: Why only import Spinner here? at the top of the file 
+        # 2020_03_10 Sim: Why only import Spinner here? at the top of the file
         # it was causing a crash when starting in a thread - no idea why
         from kivy.uix.spinner import Spinner
         for n, topic in enumerate(sorted(value)):
@@ -121,6 +123,9 @@ class DictEditor(GridLayout):
                 check_box.active = True
             elif 'flow' in topic:
                 spinner.text = 'flowMap'
+                check_box.active = True
+            elif 'imu' in topic:
+                spinner.text = 'imu'
                 check_box.active = True
             elif 'hpe' in topic:
                 spinner.text = 'hpe'
@@ -151,7 +156,7 @@ class TemplateDialog(FloatLayout):
 class DataController(GridLayout):
     ending_time = NumericProperty(.0)
     filePathOrName = StringProperty('')
-    data_dict = DictProperty({})  # A bimvee-style container of channels
+    data_dict = ObjectProperty({})  # A bimvee-style container of channels
 
     def __init__(self, **kwargs):
         super(DataController, self).__init__(**kwargs)
@@ -167,100 +172,28 @@ class DataController(GridLayout):
             settings[data_type] = {}
             if data_type == 'dvs':
                 visualiser = VisualiserDvs(data_dict[data_type])
-                settings[data_type] = {'polarised': {},
-                                       'contrast': {},
-                                       'pol_to_show': {}
-                                       }
-                settings[data_type]['polarised'] = {'type': 'boolean',
-                                                    'default': True
-                                                    }
-                settings[data_type]['contrast'] = {'type': 'range',
-                                                   'default': 3,
-                                                   'min': 1,
-                                                   'max': 20,
-                                                   'step': 1
-                                                   }
-                settings[data_type]['pol_to_show'] = {'type': 'value_list',
-                                                      'default': 'Both',
-                                                      'values': ['Pos', 'Neg', 'Both']
-                                                      }
-
+                settings[data_type] = visualiser.get_settings()
             elif data_type == 'frame':
                 visualiser = VisualiserFrame(data_dict[data_type])
             elif data_type == 'pose6q':
                 visualiser = VisualiserPose6q(data_dict[data_type])
-                settings[data_type] = {'interpolate': {},
-                                       'perspective': {}}
-                settings[data_type]['interpolate'] = {'type': 'boolean',
-                                                      'default': True
-                                                      }
-                settings[data_type]['perspective'] = {'type': 'boolean',
-                                                      'default': True
-                                                      }
+                settings[data_type] = visualiser.get_settings()
                 channel_name = channel_name + '\nred=x green=y, blue=z'
             elif data_type == 'point3':
                 visualiser = VisualiserPoint3(data_dict[data_type])
-                settings[data_type] = {'perspective': {},
-                                       'yaw': {},
-                                       'pitch': {}}
-                settings[data_type]['perspective'] = {'type': 'boolean',
-                                                      'default': True
-                                                      }
-                settings[data_type]['yaw'] = {'type': 'range',
-                                              'default': 0,
-                                              'min': -90,
-                                              'max': 90,
-                                              'step': 1
-                                              }
-                settings[data_type]['pitch'] = {'type': 'range',
-                                                'default': 0,
-                                                'min': -90,
-                                                'max': 90,
-                                                'step': 1
-                                                }
+                settings[data_type] = visualiser.get_settings()
             elif data_type == 'boundingBoxes':
                 visualiser = VisualiserBoundingBoxes(data_dict[data_type])
-                settings[data_type] = {'with_labels': {}}
-                settings[data_type]['with_labels'] = {'type': 'boolean',
-                                                      'default': True
-                                                      }
+                settings[data_type] = visualiser.get_settings()
             elif data_type == 'flowMap':
                 visualiser = VisualiserOpticFlow(data_dict[data_type])
+            elif data_type == 'imu':
+                visualiser = VisualiserImu(data_dict[data_type])
+                settings[data_type] = visualiser.get_settings()
+                channel_name = channel_name + '\nred=x green=y, blue=z'
             elif data_type == 'hpe':
                 visualiser = VisualiserHPE(data_dict[data_type])
-                # settings[data_type]['skeleton'] = {'type': 'boolean',
-                #                                     'default': True
-                #                                     }
-                settings[data_type]['skeleton'] = {'type': 'value_list',
-                                                      'default': 'None',
-                                                      'values': ['GT', 'Both', 'None']
-                                                      }
-                settings[data_type]['zoom'] = {'type': 'boolean',
-                                                    'default': False
-                                                    }
-                settings[data_type]['zoomFactor'] = {'type': 'range',
-                                                   'default': 9,
-                                                   'min': 4,
-                                                   'max': 15,
-                                                   'step': 1
-                                                   }
-                settings[data_type]['jointZoom'] = {'type': 'value_list',
-                                                      'default': list(data_dict['hpe']['skeleton']['gt'].keys())[0],
-                                                      'values': data_dict['hpe']['skeleton']['gt'].keys()
-                                                      }
-                settings[data_type]['polarised'] = {'type': 'boolean',
-                                                    'default': True
-                                                    }
-                settings[data_type]['contrast'] = {'type': 'range',
-                                                   'default': 3,
-                                                   'min': 1,
-                                                   'max': 20,
-                                                   'step': 1
-                                                   }
-                settings[data_type]['pol_to_show'] = {'type': 'value_list',
-                                                      'default': 'Both',
-                                                      'values': ['Pos', 'Neg', 'Both']
-                                                      }
+                settings[data_type] = visualiser.get_settings()
             else:
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
                 continue

@@ -2,6 +2,10 @@
 #:import os os
 #:import plt matplotlib.pyplot
 #:import math math
+
+<Label>
+    font_size: '20sp'
+
 <ConfigLabel@Label>
     size_hint_x: .8
 <ConfigSwitch@Switch>
@@ -10,6 +14,8 @@
 <ConfigSlider@Slider>
     size_hint: .2, .3
     orientation: 'vertical'
+
+<ControlButton@ButtonBehavior+Image>
 
 <BoundingBox@Widget>:
     bb: 0.0, 0.0, 0.0, 0.0
@@ -137,6 +143,7 @@
     image: image
     spacing: 5
     BoxLayout:
+        id: header
         size_hint: 1, 0.1
         Label:
             text: 'Channel: ' + root.title
@@ -146,13 +153,50 @@
             text: 'Image size: ' + str(image.texture_size)
             id: texture_size_label
             halign: 'center'
-    Image:
-        id: image
-        allow_stretch: True
-        on_size: root.on_data
-        keep_ratio: True
+        Label:
+            text: str(root.mouse_position)
+    BoxLayout:
+        orientation: 'horizontal'
+        spacing: 5
+        BoxLayout:
+            orientation: 'vertical'
+            BoxLayout:
+                Image:
+                    id: image
+                    allow_stretch: True
+                    on_size: root.on_data
+                    keep_ratio: True
+                BoxLayout:
+                    id: viewer_buttons
+                    orientation: 'vertical'
+                    size_hint: None, 0.30
+                    spacing: 2
+                    padding: 10, 0, 0, int((image.height - image.norm_image_size[1]) / 2)
+                    ControlButton:
+                        id: flip_vert_button
+                        source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
+                        text: "Flip vert"
+                        on_press: self.source='graphics/flip_vert_off.png'; root.flipVert = not root.flipVert; root.on_data(None, None)
+                        on_release:  self.source='graphics/flip_vert.png';
+                    ControlButton:
+                        id: flip_horiz_button
+                        source: 'graphics/flip_horiz_off.png' if self.disabled else 'graphics/flip_horiz.png'
+                        text: "Flip horiz"
+                        on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
+                        on_release:  self.source='graphics/flip_horiz.png';
+                    Button:
+                        text: 'Annotate' if not root.labeling else 'Save'
+                        on_release: root.save_bboxes(app.root.data_controller.filePathOrName, app.root.data_controller.ending_time); root.labeling = not root.labeling
+                    Button:
+                        text: 'Undo'
+                        disabled: not root.labeling
+                        on_release: root.remove_last_bbox()
+            Label:
+                size_hint: 1, 0.05
+                id: label_status
+                text: 'Use num keys to change tag. Labeling {}'.format(str(root.label)) if root.labeling else ''
 
-<ControlButton@ButtonBehavior+Image>
+
 
 <RootWidget>
     orientation:'horizontal'
@@ -199,7 +243,7 @@
             cols: 2
             id: controls
             size_hint_y: .35
-            spacing: 5
+            spacing: 2
             ControlButton:
                 #disabled: not hasattr(data_controller.data_dict, 'data')
                 id: play_button
@@ -254,7 +298,7 @@
         DataController:
             id: data_controller
             size_hint: 1, .9
-            orientation: 'horizontal'
+            orientation: 'lr-tb'
             spacing: 50
             file_path_and_name: ''
             time_value: time_slider.value

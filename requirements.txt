@@ -1,6 +1,7 @@
-kivy
+kivy==2.0.0
 matplotlib
 numpy
 tqdm
 imageio
 bimvee
+opencv-python
