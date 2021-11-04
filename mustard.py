@@ -152,7 +152,7 @@ class TemplateDialog(FloatLayout):
 class DataController(GridLayout):
     ending_time = NumericProperty(.0)
     filePathOrName = StringProperty('')
-    data_dict = DictProperty({})  # A bimvee-style container of channels
+    data_dict = ObjectProperty({})  # A bimvee-style container of channels
 
     def __init__(self, **kwargs):
         super(DataController, self).__init__(**kwargs)
@@ -168,72 +168,24 @@ class DataController(GridLayout):
             settings[data_type] = {}
             if data_type == 'dvs':
                 visualiser = VisualiserDvs(data_dict[data_type])
-                settings[data_type]['polarised'] = {'type': 'boolean',
-                                                    'default': True
-                                                    }
-                settings[data_type]['contrast'] = {'type': 'range',
-                                                   'default': 3,
-                                                   'min': 1,
-                                                   'max': 20,
-                                                   'step': 1
-                                                   }
-                settings[data_type]['pol_to_show'] = {'type': 'value_list',
-                                                      'default': 'Both',
-                                                      'values': ['Pos', 'Neg', 'Both']
-                                                      }
-
+                settings[data_type] = visualiser.get_settings()
             elif data_type == 'frame':
                 visualiser = VisualiserFrame(data_dict[data_type])
             elif data_type == 'pose6q':
                 visualiser = VisualiserPose6q(data_dict[data_type])
-                settings[data_type]['interpolate'] = {'type': 'boolean',
-                                                      'default': True
-                                                      }
-                settings[data_type]['perspective'] = {'type': 'boolean',
-                                                      'default': True
-                                                      }
+                settings[data_type] = visualiser.get_settings()
                 channel_name = channel_name + '\nred=x green=y, blue=z'
             elif data_type == 'point3':
                 visualiser = VisualiserPoint3(data_dict[data_type])
-                settings[data_type]['perspective'] = {'type': 'boolean',
-                                                      'default': True
-                                                      }
-                settings[data_type]['yaw'] = {'type': 'range',
-                                              'default': 0,
-                                              'min': -90,
-                                              'max': 90,
-                                              'step': 1
-                                              }
-                settings[data_type]['pitch'] = {'type': 'range',
-                                                'default': 0,
-                                                'min': -90,
-                                                'max': 90,
-                                                'step': 1
-                                                }
+                settings[data_type] = visualiser.get_settings()
             elif data_type == 'boundingBoxes':
                 visualiser = VisualiserBoundingBoxes(data_dict[data_type])
-                settings[data_type]['with_labels'] = {'type': 'boolean',
-                                                      'default': True
-                                                      }
+                settings[data_type] = visualiser.get_settings()
             elif data_type == 'flowMap':
                 visualiser = VisualiserOpticFlow(data_dict[data_type])
             elif data_type == 'imu':
                 visualiser = VisualiserImu(data_dict[data_type])
-                settings[data_type]['perspective'] = {'type': 'boolean',
-                                                      'default': True
-                                                      }
-                settings[data_type]['rotation_scale'] = {'type': 'range',
-                                              'default': 50,
-                                              'min': 0,
-                                              'max': 100,
-                                              'step': 1
-                                              }
-                settings[data_type]['smoothing'] = {'type': 'range',
-                                              'default': 0,
-                                              'min': 0,
-                                              'max': 100,
-                                              'step': 1
-                                              }
+                settings[data_type] = visualiser.get_settings()
                 channel_name = channel_name + '\nred=x green=y, blue=z'
             else:
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
