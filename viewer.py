@@ -47,7 +47,10 @@ class LabeledBoundingBox(BoundingBox):
 
     def __init__(self, bb_color, x, y, width, height, label, **kwargs):
         super(LabeledBoundingBox, self).__init__(bb_color, x, y, width, height, **kwargs)
-        self.obj_label = '{:d}'.format(int(label))
+        try:
+            self.obj_label = '{:d}'.format(int(label))
+        except ValueError:
+            self.obj_label = label
 
 
 class Viewer(BoxLayout):
@@ -237,7 +240,7 @@ class Viewer(BoxLayout):
     def on_visualisers(self, instance, value):
         if self.visualisers is not None and self.visualisers:
             for v in self.visualisers:  # TODO manage cases with multiple of below data_types
-                if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu', 'hpe']:
+                if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
                     self.colorfmt = v.get_colorfmt()
                     self.data_shape = v.get_dims()
                     buf_shape = (dp(self.data_shape[0]), dp(self.data_shape[1]))
@@ -295,11 +298,14 @@ class Viewer(BoxLayout):
                 spinner.bind(text=self.on_settings_change)
 
     def on_data(self, instance, value):
+        self.image.clear_widgets()
         for data_type in self.data.keys():
-            if data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu', 'hpe']:
+            if data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
                 self.update_image(self.data[data_type])
             elif data_type in ['boundingBoxes']:
                 self.update_b_boxes(self.data[data_type])
+            elif data_type in ['skeleton']:
+                self.update_skeleton(self.data[data_type])
 
     def update_image(self, data):
         if self.image.texture is not None:
@@ -316,12 +322,8 @@ class Viewer(BoxLayout):
                     pass  # It's not a class that allows flipping
                 self.image.texture.blit_buffer(data.tostring(), bufferfmt="ubyte", colorfmt=self.colorfmt)
 
-    def update_b_boxes(self, b_boxes, gt_visible=True):
-        self.image.clear_widgets()
-
+    def update_b_boxes(self, b_boxes):
         if b_boxes is None:
-            return
-        if not gt_visible:
             return
 
         bb_copy = b_boxes.copy()
@@ -372,6 +374,47 @@ class Viewer(BoxLayout):
                                        width=width, height=height)
 
             box_item.id = 'box_{}'.format(n),
+
+            self.image.add_widget(box_item)
+
+    def update_skeleton(self, skeleton):
+        if skeleton is None:
+            return
+
+        texture_width = self.image.texture.width
+        texture_height = self.image.texture.height
+        image_width = self.image.norm_image_size[0]
+        image_height = self.image.norm_image_size[1]
+
+        x_img = self.image.center_x - image_width / 2
+        y_img = self.image.center_y - image_height / 2
+
+        w_ratio = image_width / texture_width
+        h_ratio = image_height / texture_height
+        for i, joint in enumerate(skeleton):
+            x = skeleton[joint][0]
+            y = skeleton[joint][1]
+
+            if self.flipHoriz:
+                x = texture_width - x
+                y = texture_width - y
+            if self.flipVert:
+                y = texture_height - y
+                x = texture_height - x
+
+            x = int(x_img + w_ratio * x)
+            y = int(y_img + h_ratio * (texture_height - y))
+
+            if self.settings_values['skeleton']['show_labels']:
+                box_item = LabeledBoundingBox(bb_color=self.cm.colors[i % len(self.cm.colors)] + (1,),
+                                              x=x, y=y,
+                                              width=2, height=2,
+                                              label=joint)
+            else:
+                box_item = BoundingBox(bb_color=self.cm.colors[i % len(self.cm.colors)] + (1,),
+                                              x=x, y=y,
+                                              width=2, height=2)
+            box_item.id = 'box_{}'.format(i),
 
             self.image.add_widget(box_item)
 

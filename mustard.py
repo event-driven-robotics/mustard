@@ -77,7 +77,7 @@ except ModuleNotFoundError:
     from bimvee.visualiser import VisualiserOpticFlow
     from bimvee.visualiser import VisualiserImu
     from bimvee.timestamps import getLastTimestamp
-    from bimvee.visualiser import VisualiserHPE
+    from bimvee.visualiser import VisualiserSkeleton
 
 from viewer import Viewer
 
@@ -111,7 +111,7 @@ class DictEditor(GridLayout):
             check_box = CheckBox()
             self.add_widget(check_box)
             self.add_widget(TextInput(text=str(n)))
-            spinner = Spinner(values=['dvs', 'frame', 'pose6q', 'cam', 'imu', 'flowMap', 'hpe'])
+            spinner = Spinner(values=['dvs', 'frame', 'pose6q', 'cam', 'imu', 'flowMap', 'skeleton'])
             if 'events' in topic:
                 spinner.text = 'dvs'
                 check_box.active = True
@@ -127,8 +127,8 @@ class DictEditor(GridLayout):
             elif 'imu' in topic:
                 spinner.text = 'imu'
                 check_box.active = True
-            elif 'hpe' in topic:
-                spinner.text = 'hpe'
+            elif 'skeleton' in topic:
+                spinner.text = 'skeleton'
                 check_box.active = True
 
             self.add_widget(spinner)
@@ -191,8 +191,8 @@ class DataController(GridLayout):
                 visualiser = VisualiserImu(data_dict[data_type])
                 settings[data_type] = visualiser.get_settings()
                 channel_name = channel_name + '\nred=x green=y, blue=z'
-            elif data_type == 'hpe':
-                visualiser = VisualiserHPE(data_dict[data_type])
+            elif data_type == 'skeleton':
+                visualiser = VisualiserSkeleton(data_dict[data_type])
                 settings[data_type] = visualiser.get_settings()
             else:
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
