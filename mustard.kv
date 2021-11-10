@@ -165,12 +165,6 @@
             size_hint: 0.2, 0.30
             spacing: 2
             padding: 10, 0, 0, int((image.height - image.norm_image_size[1]) / 2)
-            canvas:
-                Color:
-                    rgba: 1, 0, 0, 1
-                Line:
-                    width: 2.
-                    rectangle: (box.x + self.width, box.y, box.width - self.width, box.height)
             ControlButton:
                 id: flip_vert_button
                 source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
@@ -193,7 +187,8 @@
         ZoomableImage:
             id: scatter
             do_rotation: False
-            on_touch_down: self.on_touch_down
+            scale_min: 0.5
+            scale_max: 10
             on_bbox: root.crop_image(box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
             Image:
                 id: image
@@ -204,7 +199,7 @@
     Label:
         size_hint: 1, 0.05
         id: label_status
-                text: 'Use num keys to change tag. Labeling {}'.format(str(root.label)) if root.labeling else ''
+        text: 'Use num keys to change tag. Labeling {}'.format(str(root.label)) if root.labeling else ''
 
 
 

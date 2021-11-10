@@ -31,7 +31,6 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.core.window import Window
 from kivy.graphics.transformation import Matrix
-from kivy.graphics.context_instructions import Color
 from kivy.graphics.vertex_instructions import Rectangle
 
 from bimvee.visualisers.visualiserBoundingBoxes import VisualiserBoundingBoxes
@@ -78,6 +77,7 @@ class ZoomableImage(Scatter):
             return False
         else:
             return super(ZoomableImage, self).on_touch_down(touch)
+
 
 class Viewer(BoxLayout):
     data = DictProperty(force_dispatch=True)
@@ -170,7 +170,7 @@ class Viewer(BoxLayout):
                 return
             if self.settings_values[viz.data_type]['interpolate']:
                 boxes = []
-                for t in np.arange(0, ending_time, 0.01): # TODO parametrize sample rate when saving interpolated
+                for t in np.arange(0, ending_time, 0.01):  # TODO parametrize sample rate when saving interpolated
                     boxes_at_time = viz.get_frame(t, self.current_time_window, **self.settings_values[viz.data_type])
                     if boxes_at_time != [[0, 0, 0, 0]] and len(boxes_at_time):
                         for b in boxes_at_time:
@@ -225,7 +225,7 @@ class Viewer(BoxLayout):
             if data_dict is None:
 
                 data_dict = {
-                    'ts':   np.array([self.current_time]),
+                    'ts': np.array([self.current_time]),
                     'minY': np.array([self.mouse_position[1]]),
                     'minX': np.array([self.mouse_position[0]]),
                     'maxY': np.array([self.mouse_position[1]]),
@@ -433,8 +433,8 @@ class Viewer(BoxLayout):
                                               label=joint)
             else:
                 box_item = BoundingBox(bb_color=self.cm.colors[i % len(self.cm.colors)] + (1,),
-                                              x=x, y=y,
-                                              width=2, height=2)
+                                       x=x, y=y,
+                                       width=2, height=2)
             box_item.id = 'box_{}'.format(i),
 
             self.image.add_widget(box_item)
@@ -456,40 +456,26 @@ class Viewer(BoxLayout):
         self.data.update(data_dict)
 
     def crop_image(self, x, y, width, height):
-        return # TODO
         x_img, y_img, image_width, image_height = self.get_image_bounding_box()
-        scale = self.image.parent.scale
-        image_width *= scale
-        image_height *= scale
 
-        crop_pos_x, crop_pos_y = self.window_to_image_coords(x, y)
-        crop_pos_x = max(0, crop_pos_x)
-        crop_pos_x = min(self.image.texture.width, crop_pos_x)
-        crop_pos_y = max(0, crop_pos_y)
-        crop_pos_y = min(self.image.texture.height, crop_pos_y)
-        crop_width = self.image.texture.width - crop_pos_x
-        crop_height = self.image.texture.height - crop_pos_y
-        print(crop_pos_x, crop_pos_y, crop_width, crop_height)
+        crop_bl_x, crop_bl_y = self.window_to_image_coords(x, y)
+        crop_tr_x, crop_tr_y = self.window_to_image_coords(x + width, y + height)
+
+        crop_bl_x = max(0, crop_bl_x)
+        crop_bl_x = min(self.image.texture.width, crop_bl_x)
+        crop_bl_y = max(0, crop_bl_y)
+        crop_bl_y = min(self.image.texture.height, crop_bl_y)
+        crop_width = min(crop_tr_x - crop_bl_x, self.image.texture.width - crop_bl_x)
+        crop_height = min(crop_tr_y - crop_bl_y, self.image.texture.height - crop_bl_y)
 
         w_ratio = image_width / self.image.texture.width
         h_ratio = image_height / self.image.texture.height
 
-        subtexture = self.image.texture.get_region(crop_pos_x, crop_pos_y, crop_width, crop_height)
+        subtexture = self.image.texture.get_region(crop_bl_x, crop_bl_y, crop_width, crop_height)
 
         with self.image.canvas:
             self.image.canvas.clear()
-            # Color(1, 0, 0)
-            # Line(rectangle=[int(w_ratio * crop_pos_x), int(h_ratio * crop_pos_y), w_ratio * crop_width, h_ratio * crop_height], width=3)
-            # Color(0,1,0)
-            # Line(rectangle=[x_img, y_img, image_width, image_height])
-            # Color(0,0,1)
-            # Line(rectangle=[0, 0, image_width, image_height])
-            # Color(1,1,0)
-            # Line(rectangle=[self.image.center_x, self.image.center_y, 10, 10])
-            Color(1, 1, 1)
-            Rectangle(texture=subtexture, pos=(int(w_ratio * crop_pos_x), int(h_ratio * crop_pos_y)), size=(w_ratio * crop_width, h_ratio * crop_height))
-        # with self.image.canvas:
-        #     self.image.canvas.clear()
-        #     Color(1, 1, 1)
-        #     Rectangle(texture=subtexture, pos=(x_img + crop_pos_x, y_img + crop_pos_y),
-        #               size=(subtexture.width, subtexture.height))
+            Rectangle(texture=subtexture,
+                      pos=(crop_bl_x * w_ratio + self.image.center_x - image_width / 2,
+                           crop_bl_y * h_ratio + self.image.center_y - image_height / 2),
+                      size=(crop_width * w_ratio, crop_height * h_ratio))
