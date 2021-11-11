@@ -61,7 +61,10 @@ class LabeledBoundingBox(BoundingBox):
 class ZoomableImage(Scatter):
 
     def on_touch_down(self, touch):
-        if not self.collide_point(touch.x, touch.y):
+        if not self.transform_allowed:
+            return False
+        if not (self.clickable_area[0] < touch.x < self.clickable_area[0] + self.clickable_area[2] and
+                self.clickable_area[1] < touch.y < self.clickable_area[1] + self.clickable_area[3]):
             return False
         if touch.is_mouse_scrolling:
             factor = None
@@ -85,6 +88,7 @@ class Viewer(BoxLayout):
     flipHoriz = BooleanProperty(False)
     flipVert = BooleanProperty(False)
     labeling = BooleanProperty(False)
+    transform_allowed = BooleanProperty(False)
     mouse_on_image = BooleanProperty(False)
     settings = DictProperty({}, allownone=True)
     settings_values = DictProperty({}, allownone=True)
@@ -102,8 +106,6 @@ class Viewer(BoxLayout):
         self.current_time = 0
         self.current_time_window = 0
         Window.bind(mouse_pos=self.on_mouse_pos)
-        self._keyboard = Window.request_keyboard(self._keyboard_closed, self, 'number')
-        self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self.clicked_mouse_pos = None
         self.last_added_box = -1
         self.cropped_region = [0, 0, 0, 0]
@@ -255,18 +257,6 @@ class Viewer(BoxLayout):
             self.get_frame(self.current_time, self.current_time_window)
             self.clicked_mouse_pos = self.mouse_position[0], self.mouse_position[1]
         return False
-
-    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-        try:
-            self.label = int(keycode[1][-1])
-        except ValueError:
-            return False
-        # Return True to accept the key. Otherwise, it will be used by the system.
-        return True
-
-    def _keyboard_closed(self):
-        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
-        del self._keyboard
 
     def on_visualisers(self, instance, value):
         if self.visualisers is not None and self.visualisers:
