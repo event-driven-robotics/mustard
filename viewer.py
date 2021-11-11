@@ -29,7 +29,7 @@ from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictP
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
-from kivy.core.window import Window
+from kivy.core.window import Window, Clock
 from kivy.graphics.transformation import Matrix
 from kivy.graphics.vertex_instructions import Rectangle
 
@@ -59,6 +59,14 @@ class LabeledBoundingBox(BoundingBox):
 
 
 class ZoomableImage(Scatter):
+
+    def __init__(self, **kwargs):
+        super(ZoomableImage, self).__init__(**kwargs)
+        Clock.schedule_once(self.reset_zoom)
+
+    def reset_zoom(self, _):
+        self.apply_transform(Matrix().scale(1, 1, 1),
+                             anchor=self.center)
 
     def on_touch_down(self, touch):
         if not self.transform_allowed:
