@@ -4,7 +4,7 @@
 #:import math math
 
 <Label>
-    font_size: '20sp'
+    font_size: '15sp'
 
 <ConfigLabel@Label>
     size_hint_x: .8
@@ -158,43 +158,55 @@
     BoxLayout:
         orientation: 'horizontal'
         spacing: 5
+        id: box
         BoxLayout:
+            id: viewer_buttons
             orientation: 'vertical'
-            BoxLayout:
-                Image:
-                    id: image
-                    allow_stretch: True
-                    on_size: root.on_data
-                    keep_ratio: True
-                BoxLayout:
-                    id: viewer_buttons
-                    orientation: 'vertical'
-                    size_hint: None, 0.30
-                    spacing: 2
-                    padding: 10, 0, 0, int((image.height - image.norm_image_size[1]) / 2)
-                    ControlButton:
-                        id: flip_vert_button
-                        source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
-                        text: "Flip vert"
-                        on_press: self.source='graphics/flip_vert_off.png'; root.flipVert = not root.flipVert; root.on_data(None, None)
-                        on_release:  self.source='graphics/flip_vert.png';
-                    ControlButton:
-                        id: flip_horiz_button
-                        source: 'graphics/flip_horiz_off.png' if self.disabled else 'graphics/flip_horiz.png'
-                        text: "Flip horiz"
-                        on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
-                        on_release:  self.source='graphics/flip_horiz.png';
-                    Button:
-                        text: 'Annotate' if not root.labeling else 'Save'
-                        on_release: root.save_bboxes(app.root.data_controller.filePathOrName, app.root.data_controller.ending_time); root.labeling = not root.labeling
-                    Button:
-                        text: 'Undo'
-                        disabled: not root.labeling
-                        on_release: root.remove_last_bbox()
-            Label:
-                size_hint: 1, 0.05
-                id: label_status
-                text: 'Use num keys to change tag. Labeling {}'.format(str(root.label)) if root.labeling else ''
+            size_hint: 0.2, 0.30
+            spacing: 2
+            padding: 10, 0, 0, int((image.height - image.norm_image_size[1]) / 2)
+            ControlButton:
+                id: flip_vert_button
+                source: 'graphics/flip_vert_off.png' if self.disabled else 'graphics/flip_vert.png'
+                text: "Flip vert"
+                on_press: self.source='graphics/flip_vert_off.png'; root.flipVert = not root.flipVert; root.on_data(None, None)
+                on_release:  self.source='graphics/flip_vert.png';
+            ControlButton:
+                id: flip_horiz_button
+                source: 'graphics/flip_horiz_off.png' if self.disabled else 'graphics/flip_horiz.png'
+                text: "Flip horiz"
+                on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
+                on_release:  self.source='graphics/flip_horiz.png';
+            Button:
+                text: 'Annotate' if not root.labeling else 'Save'
+                on_release: root.save_bboxes(app.root.data_controller.filePathOrName, app.root.data_controller.ending_time); root.labeling = not root.labeling
+            Button:
+                text: 'Undo'
+                disabled: not root.labeling
+                on_release: root.remove_last_bbox()
+            Button:
+                text: 'Stop'
+                disabled: not root.labeling
+                on_release: root.labeling = False
+        ZoomableImage:
+            id: scatter
+            do_rotation: False
+            auto_bring_to_front: False
+            scale_min: 0.5
+            scale_max: 10
+            clickable_area: [box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height]
+            transform_allowed: root.transform_allowed
+            on_bbox: root.crop_image(box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
+            Image:
+                id: image
+                size: scatter.size
+                allow_stretch: True
+                on_size: root.on_data
+                keep_ratio: True
+    Label:
+        size_hint: 1, 0.05
+        id: label_status
+        text: 'Use num keys to change tag. Labeling {}'.format(str(root.label)) if root.labeling else ''
 
 
 

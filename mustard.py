@@ -53,6 +53,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy.properties import ObjectProperty
 from kivy.properties import StringProperty, NumericProperty
 from kivy.properties import DictProperty
+from kivy.core.window import Window
 
 # To get the graphics, set this as the current working directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -77,6 +78,7 @@ except ModuleNotFoundError:
     from bimvee.visualiser import VisualiserOpticFlow
     from bimvee.visualiser import VisualiserImu
     from bimvee.timestamps import getLastTimestamp
+    from bimvee.visualiser import VisualiserSkeleton
 
 from viewer import Viewer
 
@@ -110,7 +112,7 @@ class DictEditor(GridLayout):
             check_box = CheckBox()
             self.add_widget(check_box)
             self.add_widget(TextInput(text=str(n)))
-            spinner = Spinner(values=['dvs', 'frame', 'pose6q', 'cam', 'imu', 'flowMap'])
+            spinner = Spinner(values=['dvs', 'frame', 'pose6q', 'cam', 'imu', 'flowMap', 'skeleton'])
             if 'events' in topic:
                 spinner.text = 'dvs'
                 check_box.active = True
@@ -125,6 +127,9 @@ class DictEditor(GridLayout):
                 check_box.active = True
             elif 'imu' in topic:
                 spinner.text = 'imu'
+                check_box.active = True
+            elif 'skeleton' in topic:
+                spinner.text = 'skeleton'
                 check_box.active = True
 
             self.add_widget(spinner)
@@ -187,6 +192,9 @@ class DataController(GridLayout):
                 visualiser = VisualiserImu(data_dict[data_type])
                 settings[data_type] = visualiser.get_settings()
                 channel_name = channel_name + '\nred=x green=y, blue=z'
+            elif data_type == 'skeleton':
+                visualiser = VisualiserSkeleton(data_dict[data_type])
+                settings[data_type] = visualiser.get_settings()
             else:
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
                 continue
@@ -353,6 +361,28 @@ class TimeSlider(Slider):
 class RootWidget(BoxLayout):
     def __init__(self, **kwargs):
         super(RootWidget, self).__init__(**kwargs)
+        self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+        self._keyboard.bind(on_key_down=self._on_keyboard_down, on_key_up=self._on_keyboard_up)
+
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        for viewer in self.data_controller.children:
+            viewer.transform_allowed = 'shift' in modifiers
+            try:
+                viewer.label = int(keycode[1][-1])
+            except ValueError:
+                continue
+            # Return True to accept the key. Otherwise, it will be used by the system.
+        return True
+
+    def _on_keyboard_up(self, keyboard, keycode):
+        for viewer in self.data_controller.children:
+            viewer.transform_allowed = False
+            # Return True to accept the key. Otherwise, it will be used by the system.
+        return True
+
+    def _keyboard_closed(self):
+        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        del self._keyboard
 
 
 class Mustard(App):

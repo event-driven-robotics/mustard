@@ -22,15 +22,20 @@ import re
 from kivy.graphics.texture import Texture
 from kivy.uix.widget import Widget
 from kivy.uix.slider import Slider
+from kivy.uix.scatter import Scatter
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
 from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictProperty, NumericProperty
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
-from kivy.core.window import Window
+from kivy.core.window import Window, Clock
+from kivy.graphics.transformation import Matrix
+from kivy.graphics.vertex_instructions import Rectangle
+
 from bimvee.visualisers.visualiserBoundingBoxes import VisualiserBoundingBoxes
 import os
+
 
 class BoundingBox(Widget):
     def __init__(self, bb_color, x, y, width, height, **kwargs):
@@ -47,7 +52,42 @@ class LabeledBoundingBox(BoundingBox):
 
     def __init__(self, bb_color, x, y, width, height, label, **kwargs):
         super(LabeledBoundingBox, self).__init__(bb_color, x, y, width, height, **kwargs)
-        self.obj_label = '{:d}'.format(int(label))
+        try:
+            self.obj_label = '{:d}'.format(int(label))
+        except ValueError:
+            self.obj_label = label
+
+
+class ZoomableImage(Scatter):
+
+    def __init__(self, **kwargs):
+        super(ZoomableImage, self).__init__(**kwargs)
+        Clock.schedule_once(self.reset_zoom)
+
+    def reset_zoom(self, _):
+        self.apply_transform(Matrix().scale(1, 1, 1),
+                             anchor=self.center)
+
+    def on_touch_down(self, touch):
+        if not self.transform_allowed:
+            return False
+        if not (self.clickable_area[0] < touch.x < self.clickable_area[0] + self.clickable_area[2] and
+                self.clickable_area[1] < touch.y < self.clickable_area[1] + self.clickable_area[3]):
+            return False
+        if touch.is_mouse_scrolling:
+            factor = None
+            if touch.button == 'scrolldown':
+                if self.scale < self.scale_max:
+                    factor = 1.1
+            elif touch.button == 'scrollup':
+                if self.scale > self.scale_min:
+                    factor = 1 / 1.1
+            if factor is not None:
+                self.apply_transform(Matrix().scale(factor, factor, factor),
+                                     anchor=touch.pos)
+            return False
+        else:
+            return super(ZoomableImage, self).on_touch_down(touch)
 
 
 class Viewer(BoxLayout):
@@ -56,6 +96,7 @@ class Viewer(BoxLayout):
     flipHoriz = BooleanProperty(False)
     flipVert = BooleanProperty(False)
     labeling = BooleanProperty(False)
+    transform_allowed = BooleanProperty(False)
     mouse_on_image = BooleanProperty(False)
     settings = DictProperty({}, allownone=True)
     settings_values = DictProperty({}, allownone=True)
@@ -73,22 +114,25 @@ class Viewer(BoxLayout):
         self.current_time = 0
         self.current_time_window = 0
         Window.bind(mouse_pos=self.on_mouse_pos)
-        self._keyboard = Window.request_keyboard(self._keyboard_closed, self, 'number')
-        self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self.clicked_mouse_pos = None
         self.last_added_box = -1
+        self.cropped_region = [0, 0, 0, 0]
 
-    def window_to_image_coords(self, x, y):
-        w_ratio = self.image.norm_image_size[0] / self.image.texture.width
-        h_ratio = self.image.norm_image_size[1] / self.image.texture.height
+    def window_to_image_coords(self, x, y, flip=True):
+        scale = self.image.parent.scale
+        scaled_image_width = self.image.norm_image_size[0] * scale
+        scaled_image_height = self.image.norm_image_size[1] * scale
+        w_ratio = scaled_image_width / self.image.texture.width
+        h_ratio = scaled_image_height / self.image.texture.height
+        window_img_x, window_img_y = self.image.to_window(self.image.center_x, self.image.center_y)
+        image_x = ((x - (window_img_x - scaled_image_width / 2)) / w_ratio)
+        image_y = ((y - (window_img_y - scaled_image_height / 2)) / h_ratio)
 
-        image_x = (x - (self.image.center_x - self.image.norm_image_size[0] / 2)) / w_ratio
-        image_y = (y - (self.image.center_y - self.image.norm_image_size[1] / 2)) / h_ratio
-
-        if self.flipHoriz:
-            image_x = self.image.texture.width - image_x
-        if self.flipVert:
-            image_y = self.image.texture.height - image_y
+        if flip:
+            if self.flipHoriz:
+                image_x = self.image.texture.width - image_x
+            if self.flipVert:
+                image_y = self.image.texture.height - image_y
         return image_x, image_y
 
     def on_mouse_pos(self, window, pos):
@@ -138,7 +182,7 @@ class Viewer(BoxLayout):
                 return
             if self.settings_values[viz.data_type]['interpolate']:
                 boxes = []
-                for t in np.arange(0, ending_time, 0.01): # TODO parametrize sample rate when saving interpolated
+                for t in np.arange(0, ending_time, 0.01):  # TODO parametrize sample rate when saving interpolated
                     boxes_at_time = viz.get_frame(t, self.current_time_window, **self.settings_values[viz.data_type])
                     if boxes_at_time != [[0, 0, 0, 0]] and len(boxes_at_time):
                         for b in boxes_at_time:
@@ -193,7 +237,7 @@ class Viewer(BoxLayout):
             if data_dict is None:
 
                 data_dict = {
-                    'ts':   np.array([self.current_time]),
+                    'ts': np.array([self.current_time]),
                     'minY': np.array([self.mouse_position[1]]),
                     'minX': np.array([self.mouse_position[0]]),
                     'maxY': np.array([self.mouse_position[1]]),
@@ -221,18 +265,6 @@ class Viewer(BoxLayout):
             self.get_frame(self.current_time, self.current_time_window)
             self.clicked_mouse_pos = self.mouse_position[0], self.mouse_position[1]
         return False
-
-    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-        try:
-            self.label = int(keycode[1][-1])
-        except ValueError:
-            return False
-        # Return True to accept the key. Otherwise, it will be used by the system.
-        return True
-
-    def _keyboard_closed(self):
-        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
-        del self._keyboard
 
     def on_visualisers(self, instance, value):
         if self.visualisers is not None and self.visualisers:
@@ -295,11 +327,14 @@ class Viewer(BoxLayout):
                 spinner.bind(text=self.on_settings_change)
 
     def on_data(self, instance, value):
+        self.image.clear_widgets()
         for data_type in self.data.keys():
             if data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
                 self.update_image(self.data[data_type])
             elif data_type in ['boundingBoxes']:
                 self.update_b_boxes(self.data[data_type])
+            elif data_type in ['skeleton']:
+                self.update_skeleton(self.data[data_type])
 
     def update_image(self, data):
         if self.image.texture is not None:
@@ -316,22 +351,14 @@ class Viewer(BoxLayout):
                     pass  # It's not a class that allows flipping
                 self.image.texture.blit_buffer(data.tostring(), bufferfmt="ubyte", colorfmt=self.colorfmt)
 
-    def update_b_boxes(self, b_boxes, gt_visible=True):
-        self.image.clear_widgets()
-
+    def update_b_boxes(self, b_boxes):
         if b_boxes is None:
-            return
-        if not gt_visible:
             return
 
         bb_copy = b_boxes.copy()
         texture_width = self.image.texture.width
         texture_height = self.image.texture.height
-        image_width = self.image.norm_image_size[0]
-        image_height = self.image.norm_image_size[1]
-
-        x_img = self.image.center_x - image_width / 2
-        y_img = self.image.center_y - image_height / 2
+        x_img, y_img, image_width, image_height = self.get_image_bounding_box()
 
         w_ratio = image_width / texture_width
         h_ratio = image_height / texture_height
@@ -348,6 +375,10 @@ class Viewer(BoxLayout):
                 max_y = texture_height - b[0]
                 b[0] = min_y
                 b[2] = max_y
+
+            if not (self.cropped_region[0] < (b[3] + b[1]) / 2 < self.cropped_region[0] + self.cropped_region[2] and
+                    self.cropped_region[1] < texture_height - ((b[2] + b[0]) / 2) < self.cropped_region[1] + self.cropped_region[3]):
+                continue
 
             width = w_ratio * float(b[3] - b[1])
             height = h_ratio * float(b[2] - b[0])
@@ -375,6 +406,52 @@ class Viewer(BoxLayout):
 
             self.image.add_widget(box_item)
 
+    def update_skeleton(self, skeleton):
+        if skeleton is None:
+            return
+
+        texture_width = self.image.texture.width
+        texture_height = self.image.texture.height
+        x_img, y_img, image_width, image_height = self.get_image_bounding_box()
+
+        w_ratio = image_width / texture_width
+        h_ratio = image_height / texture_height
+        for i, joint in enumerate(skeleton):
+            x = skeleton[joint][0]
+            y = texture_height - skeleton[joint][1]
+
+            if self.flipHoriz:
+                x = texture_width - x
+            if self.flipVert:
+                y = texture_height - y
+
+            if not (self.cropped_region[0] < x < self.cropped_region[0] + self.cropped_region[2] and
+                    self.cropped_region[1] < y < self.cropped_region[1] + self.cropped_region[3]):
+                continue
+
+            x = int(x_img + w_ratio * x)
+            y = int(y_img + h_ratio * y)
+
+            if self.settings_values['skeleton']['show_labels']:
+                box_item = LabeledBoundingBox(bb_color=self.cm.colors[i % len(self.cm.colors)] + (1,),
+                                              x=x, y=y,
+                                              width=2, height=2,
+                                              label=joint)
+            else:
+                box_item = BoundingBox(bb_color=self.cm.colors[i % len(self.cm.colors)] + (1,),
+                                       x=x, y=y,
+                                       width=2, height=2)
+            box_item.id = 'box_{}'.format(i),
+
+            self.image.add_widget(box_item)
+
+    def get_image_bounding_box(self):
+        image_width = self.image.norm_image_size[0]
+        image_height = self.image.norm_image_size[1]
+        x_img = self.image.center_x - image_width / 2
+        y_img = self.image.center_y - image_height / 2
+        return x_img, y_img, image_width, image_height
+
     def get_frame(self, time_value, time_window):
         data_dict = {}
         self.current_time = time_value
@@ -383,3 +460,33 @@ class Viewer(BoxLayout):
             data_dict[v.data_type] = {}
             data_dict[v.data_type] = v.get_frame(time_value, time_window, **self.settings_values[v.data_type])
         self.data.update(data_dict)
+
+    def crop_image(self, x, y, width, height):
+        _, _, image_width, image_height = self.get_image_bounding_box()
+
+        crop_bl_x, crop_bl_y = self.window_to_image_coords(x, y, flip=False)
+        crop_tr_x, crop_tr_y = self.window_to_image_coords(x + width, y + height, flip=False)
+
+        texture_width = self.image.texture.width
+        texture_height = self.image.texture.height
+        crop_bl_x = max(0, crop_bl_x)
+        crop_bl_x = min(texture_width, crop_bl_x)
+        crop_bl_y = max(0, crop_bl_y)
+        crop_bl_y = min(texture_height, crop_bl_y)
+        crop_width = min(crop_tr_x - crop_bl_x, texture_width - crop_bl_x)
+        crop_height = min(crop_tr_y - crop_bl_y, texture_height - crop_bl_y)
+
+        w_ratio = image_width / texture_width
+        h_ratio = image_height / texture_height
+
+        subtexture = self.image.texture.get_region(crop_bl_x, crop_bl_y, crop_width, crop_height)
+
+        self.cropped_region = [crop_bl_x, crop_bl_y, crop_width, crop_height]
+
+        with self.image.canvas:
+            self.image.canvas.clear()
+            Rectangle(texture=subtexture,
+                      pos=(crop_bl_x * w_ratio + self.image.center_x - image_width / 2,
+                           crop_bl_y * h_ratio + self.image.center_y - image_height / 2),
+                      size=(crop_width * w_ratio, crop_height * h_ratio))
+        self.on_data(None, None)
