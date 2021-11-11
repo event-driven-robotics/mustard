@@ -106,8 +106,9 @@ class Viewer(BoxLayout):
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
         self.clicked_mouse_pos = None
         self.last_added_box = -1
+        self.cropped_region = [0, 0, 0, 0]
 
-    def window_to_image_coords(self, x, y):
+    def window_to_image_coords(self, x, y, flip=True):
         scale = self.image.parent.scale
         scaled_image_width = self.image.norm_image_size[0] * scale
         scaled_image_height = self.image.norm_image_size[1] * scale
@@ -117,10 +118,11 @@ class Viewer(BoxLayout):
         image_x = ((x - (window_img_x - scaled_image_width / 2)) / w_ratio)
         image_y = ((y - (window_img_y - scaled_image_height / 2)) / h_ratio)
 
-        if self.flipHoriz:
-            image_x = self.image.texture.width - image_x
-        if self.flipVert:
-            image_y = self.image.texture.height - image_y
+        if flip:
+            if self.flipHoriz:
+                image_x = self.image.texture.width - image_x
+            if self.flipVert:
+                image_y = self.image.texture.height - image_y
         return image_x, image_y
 
     def on_mouse_pos(self, window, pos):
@@ -376,6 +378,10 @@ class Viewer(BoxLayout):
                 b[0] = min_y
                 b[2] = max_y
 
+            if not (self.cropped_region[0] < (b[3] + b[1]) / 2 < self.cropped_region[0] + self.cropped_region[2] and
+                    self.cropped_region[1] < texture_height - ((b[2] + b[0]) / 2) < self.cropped_region[1] + self.cropped_region[3]):
+                continue
+
             width = w_ratio * float(b[3] - b[1])
             height = h_ratio * float(b[2] - b[0])
             if width == 0 and height == 0:
@@ -414,17 +420,19 @@ class Viewer(BoxLayout):
         h_ratio = image_height / texture_height
         for i, joint in enumerate(skeleton):
             x = skeleton[joint][0]
-            y = skeleton[joint][1]
+            y = texture_height - skeleton[joint][1]
 
             if self.flipHoriz:
                 x = texture_width - x
-                y = texture_width - y
             if self.flipVert:
                 y = texture_height - y
-                x = texture_height - x
+
+            if not (self.cropped_region[0] < x < self.cropped_region[0] + self.cropped_region[2] and
+                    self.cropped_region[1] < y < self.cropped_region[1] + self.cropped_region[3]):
+                continue
 
             x = int(x_img + w_ratio * x)
-            y = int(y_img + h_ratio * (texture_height - y))
+            y = int(y_img + h_ratio * y)
 
             if self.settings_values['skeleton']['show_labels']:
                 box_item = LabeledBoundingBox(bb_color=self.cm.colors[i % len(self.cm.colors)] + (1,),
@@ -456,22 +464,26 @@ class Viewer(BoxLayout):
         self.data.update(data_dict)
 
     def crop_image(self, x, y, width, height):
-        x_img, y_img, image_width, image_height = self.get_image_bounding_box()
+        _, _, image_width, image_height = self.get_image_bounding_box()
 
-        crop_bl_x, crop_bl_y = self.window_to_image_coords(x, y)
-        crop_tr_x, crop_tr_y = self.window_to_image_coords(x + width, y + height)
+        crop_bl_x, crop_bl_y = self.window_to_image_coords(x, y, flip=False)
+        crop_tr_x, crop_tr_y = self.window_to_image_coords(x + width, y + height, flip=False)
 
+        texture_width = self.image.texture.width
+        texture_height = self.image.texture.height
         crop_bl_x = max(0, crop_bl_x)
-        crop_bl_x = min(self.image.texture.width, crop_bl_x)
+        crop_bl_x = min(texture_width, crop_bl_x)
         crop_bl_y = max(0, crop_bl_y)
-        crop_bl_y = min(self.image.texture.height, crop_bl_y)
-        crop_width = min(crop_tr_x - crop_bl_x, self.image.texture.width - crop_bl_x)
-        crop_height = min(crop_tr_y - crop_bl_y, self.image.texture.height - crop_bl_y)
+        crop_bl_y = min(texture_height, crop_bl_y)
+        crop_width = min(crop_tr_x - crop_bl_x, texture_width - crop_bl_x)
+        crop_height = min(crop_tr_y - crop_bl_y, texture_height - crop_bl_y)
 
-        w_ratio = image_width / self.image.texture.width
-        h_ratio = image_height / self.image.texture.height
+        w_ratio = image_width / texture_width
+        h_ratio = image_height / texture_height
 
         subtexture = self.image.texture.get_region(crop_bl_x, crop_bl_y, crop_width, crop_height)
+
+        self.cropped_region = [crop_bl_x, crop_bl_y, crop_width, crop_height]
 
         with self.image.canvas:
             self.image.canvas.clear()
@@ -479,3 +491,4 @@ class Viewer(BoxLayout):
                       pos=(crop_bl_x * w_ratio + self.image.center_x - image_width / 2,
                            crop_bl_y * h_ratio + self.image.center_y - image_height / 2),
                       size=(crop_width * w_ratio, crop_height * h_ratio))
+        self.on_data(None, None)

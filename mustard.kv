@@ -187,6 +187,7 @@
         ZoomableImage:
             id: scatter
             do_rotation: False
+            auto_bring_to_front: False
             scale_min: 0.5
             scale_max: 10
             on_bbox: root.crop_image(box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
