@@ -318,6 +318,9 @@
             time_window: tw_slider.log_value
             on_time_window: self.update_children()
             on_data_dict: time_slider.value = 0
+        Label:
+            size_hint:1, .03
+            text: 'Use Shift+mouse wheel to zoom and Shift+mouse drag to pan'
         TimeSlider:
             #disabled: not hasattr(data_controller.data_dict, 'data')
             id: time_slider
