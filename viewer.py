@@ -226,6 +226,8 @@ class Viewer(BoxLayout):
             return True
         if not self.mouse_on_image:
             return False
+        if self.transform_allowed:
+            return False
         if self.labeling:
             data_dict = None
             viz = None

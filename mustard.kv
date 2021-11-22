@@ -189,19 +189,19 @@
                 disabled: not root.labeling
                 on_release: root.labeling = False
         ZoomableImage:
-            id: scatter
+            id: zoomable_image
             do_rotation: False
             auto_bring_to_front: False
             scale_min: 0.5
             scale_max: 10
-            clickable_area: [box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height]
+            clickable_area: (box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
             transform_allowed: root.transform_allowed
-            on_bbox: root.crop_image(box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
+            on_bbox: root.crop_image(*self.clickable_area)
             Image:
                 id: image
-                size: scatter.size
+                size: zoomable_image.size
                 allow_stretch: True
-                on_size: root.on_data
+                on_size: root.crop_image(*zoomable_image.clickable_area)
                 keep_ratio: True
     Label:
         size_hint: 1, 0.05
