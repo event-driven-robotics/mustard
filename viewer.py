@@ -101,7 +101,7 @@ class Viewer(BoxLayout):
     settings = DictProperty({}, allownone=True)
     settings_values = DictProperty({}, allownone=True)
     title = StringProperty('Title')
-    colorfmt = 'luminance'
+    colorfmt = StringProperty('luminance')
     orientation = 'vertical'
     mouse_position = ListProperty([0, 0])
     label = NumericProperty(0)
@@ -269,6 +269,9 @@ class Viewer(BoxLayout):
         return False
 
     def on_visualisers(self, instance, value):
+        self.init_visualisers()
+
+    def init_visualisers(self):
         if self.visualisers is not None and self.visualisers:
             for v in self.visualisers:  # TODO manage cases with multiple of below data_types
                 if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
@@ -461,6 +464,7 @@ class Viewer(BoxLayout):
         for v in self.visualisers:
             data_dict[v.data_type] = {}
             data_dict[v.data_type] = v.get_frame(time_value, time_window, **self.settings_values[v.data_type])
+            self.colorfmt = v.get_colorfmt()
         self.data.update(data_dict)
 
     def crop_image(self, x, y, width, height):
