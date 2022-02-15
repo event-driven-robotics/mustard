@@ -17,7 +17,6 @@ Use kivy to create an app which can receive data dicts as imported by bimvee
 importAe, and allow synchronised playback for each of the contained channels and datatypes. 
 """
 # standard imports 
-import matplotlib.pyplot as plt
 import numpy as np
 import sys, os
 
@@ -80,7 +79,7 @@ except ModuleNotFoundError:
     from bimvee.timestamps import getLastTimestamp
     from bimvee.visualiser import VisualiserSkeleton
 
-from viewer import Viewer
+from mustard.viewer import Viewer
 
 
 class ErrorPopup(Popup):
@@ -392,6 +391,3 @@ class Mustard(App):
     def setData(self, newDataDict):
         self.root.data_controller.data_dict = {}
         self.root.data_controller.data_dict = newDataDict
-        
-if __name__ == '__main__':
-    Mustard().run()

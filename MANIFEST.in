@@ -1,0 +1,2 @@
+include mustard/graphics/*.png
+include mustard/mustard.kv

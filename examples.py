@@ -39,7 +39,7 @@ import threading
 prefix = 'C:/' if os.name == 'nt' else '/home/sbamford/'    
 sys.path.append(os.path.join(prefix, 'repos/bimvee'))
 
-from mustard.mustard import Mustard
+from mustard.mustard_gui import Mustard
 # Create the mustard  app and start it in a thread
 app = Mustard()
 thread = threading.Thread(target=app.run)
