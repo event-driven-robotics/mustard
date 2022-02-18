@@ -2,4 +2,4 @@
 venv*
 build
 dist
-mustard.egg-info
+mustard_gui.egg-info

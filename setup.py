@@ -8,14 +8,11 @@ here = path.abspath(path.dirname(__file__))
 # Get the long description from the README file
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
-# Get the requirements from the requirements.txt file
-with open(path.join(here, 'requirements.txt')) as f:
-    requirements = f.read().splitlines()
 
 setup(
-    name='mustard',
+    name='mustard-gui',
     packages=find_packages(),
-    version='0.5',
+    version='1.0.3',
     license='gpl',
     description='MUlti STream Agnostic Representation Dataplayer',
     long_description=long_description,
@@ -25,7 +22,11 @@ setup(
     url='https://github.com/event-driven-robotics/mustard',
     keywords=['event', 'event camera', 'event-based', 'event-driven', 'spike', 'dvs', 'dynamic vision sensor',
               'neuromorphic', 'aer', 'address-event representation' 'spiking neural network', 'davis', 'atis', 'celex'],
-    install_requires=requirements,
+    install_requires=['kivy==2.0.0',
+                      'matplotlib',
+                      'numpy',
+                      'tqdm',
+                      'bimvee'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
