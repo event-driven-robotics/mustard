@@ -115,7 +115,7 @@ class Viewer(BoxLayout):
         self.current_time_window = 0
         Window.bind(mouse_pos=self.on_mouse_pos)
         self.clicked_mouse_pos = None
-        self.last_added_box = -1
+        self.last_added_box_idx = -1
         self.cropped_region = [0, 0, 0, 0]
 
     def window_to_image_coords(self, x, y, flip=True):
@@ -159,14 +159,18 @@ class Viewer(BoxLayout):
         for v in self.visualisers:
             if isinstance(v, VisualiserBoundingBoxes):
                 data_dict = v.get_data()
-                for d in data_dict:
+                if self.last_added_box_idx != -1 and data_dict['orderAdded'][self.last_added_box_idx] != -1:
+                    for d in data_dict:
+                        try:
+                            data_dict[d] = np.delete(data_dict[d], self.last_added_box_idx)
+                        except IndexError:
+                            return
                     try:
-                        if self.last_added_box != -1:
-                            data_dict[d] = np.delete(data_dict[d], self.last_added_box)
-                        else:
-                            return  # TODO you can only undo the very last added box
-                    except IndexError:
-                        return
+                        self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
+                    except ValueError:
+                        self.last_added_box_idx = -1
+                else:
+                    return  # TODO you can only undo the very last added box
                 v.set_data(data_dict)
                 self.get_frame(self.current_time, self.current_time_window)
 
@@ -200,11 +204,11 @@ class Viewer(BoxLayout):
                     viz = v
                     break
 
-            data_dict['ts'][self.last_added_box] = self.current_time
-            data_dict['minY'][self.last_added_box] = min(self.mouse_position[1], self.clicked_mouse_pos[1])
-            data_dict['maxY'][self.last_added_box] = max(self.mouse_position[1], self.clicked_mouse_pos[1])
-            data_dict['minX'][self.last_added_box] = min(self.mouse_position[0], self.clicked_mouse_pos[0])
-            data_dict['maxX'][self.last_added_box] = max(self.mouse_position[0], self.clicked_mouse_pos[0])
+            data_dict['ts'][self.last_added_box_idx] = self.current_time
+            data_dict['minY'][self.last_added_box_idx] = min(self.mouse_position[1], self.clicked_mouse_pos[1])
+            data_dict['maxY'][self.last_added_box_idx] = max(self.mouse_position[1], self.clicked_mouse_pos[1])
+            data_dict['minX'][self.last_added_box_idx] = min(self.mouse_position[0], self.clicked_mouse_pos[0])
+            data_dict['maxX'][self.last_added_box_idx] = max(self.mouse_position[0], self.clicked_mouse_pos[0])
             viz.set_data(data_dict)
             self.get_frame(self.current_time, self.current_time_window)
         return False
@@ -237,14 +241,14 @@ class Viewer(BoxLayout):
                     viz = v
                     break
             if data_dict is None:
-
                 data_dict = {
                     'ts': np.array([self.current_time]),
                     'minY': np.array([self.mouse_position[1]]),
                     'minX': np.array([self.mouse_position[0]]),
                     'maxY': np.array([self.mouse_position[1]]),
                     'maxX': np.array([self.mouse_position[0]]),
-                    'label': np.array([self.label])
+                    'label': np.array([self.label]),
+                    'orderAdded': np.array([0])
                 }
                 viz = VisualiserBoundingBoxes(data_dict)
                 self.settings['boundingBoxes'] = viz.get_settings()
@@ -256,13 +260,22 @@ class Viewer(BoxLayout):
                 data_dict['maxY'] = np.append(data_dict['maxY'], self.mouse_position[1])
                 data_dict['maxX'] = np.append(data_dict['maxX'], self.mouse_position[0])
                 data_dict['label'] = np.append(data_dict['label'], self.label)
+                try:
+                    added_box = data_dict['orderAdded'].max() + 1
+                except ValueError:
+                    added_box = 0
+                except KeyError:
+                    data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
+                    added_box = len(data_dict['ts']) - 1
+
+                data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_box)
             # Sorting wrt timestamps
             argsort = np.argsort(data_dict['ts'])
-            self.last_added_box = np.argmax(argsort)
             for d in data_dict:
                 if hasattr(data_dict[d], '__len__'):
                     data_dict[d] = data_dict[d][argsort]
 
+            self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
             viz.set_data(data_dict)
             self.get_frame(self.current_time, self.current_time_window)
             self.clicked_mouse_pos = self.mouse_position[0], self.mouse_position[1]
