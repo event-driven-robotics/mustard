@@ -364,6 +364,12 @@ class RootWidget(BoxLayout):
         self._keyboard.bind(on_key_down=self._on_keyboard_down, on_key_up=self._on_keyboard_up)
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        if keycode[1] == 'right':
+            self.ids['time_slider'].step_forward()
+        if keycode[1] == 'left':
+            self.ids['time_slider'].step_backward()
+        if keycode[1] == 'spacebar':
+            self.ids['time_slider'].play_pause()
         for viewer in self.data_controller.children:
             viewer.transform_allowed = 'shift' in modifiers
             try:
