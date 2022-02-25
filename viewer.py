@@ -192,7 +192,7 @@ class Viewer(BoxLayout):
                         for b in boxes_at_time:
                             boxes.append(np.concatenate(([t], b)))
             else:
-                boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['maxY'], data_dict['minX'],
+                boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
                                          data_dict['maxX'], data_dict['label']))
             np.savetxt(os.path.join(path, 'ground_truth.csv'), boxes, fmt='%f')
 
