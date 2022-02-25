@@ -38,6 +38,8 @@ import os
 
 
 class BoundingBox(Widget):
+    mouse_over = BooleanProperty(False)
+
     def __init__(self, bb_color, x, y, width, height, **kwargs):
         super(BoundingBox, self).__init__(**kwargs)
         self.x = x
@@ -45,6 +47,12 @@ class BoundingBox(Widget):
         self.width = width
         self.height = height
         self.bb_color = bb_color
+        Window.bind(mouse_pos=self.on_mouse_pos)
+
+    def on_mouse_pos(self, window, pos):
+        win_coords = self.to_window(*self.pos)
+        self.mouse_over = win_coords[0] < pos[0] < win_coords[0] + self.size[0] and\
+                          win_coords[1] < pos[1] < win_coords[1] + self.size[1]
 
 
 class LabeledBoundingBox(BoundingBox):
@@ -105,6 +113,7 @@ class Viewer(BoxLayout):
     orientation = 'vertical'
     mouse_position = ListProperty([0, 0])
     label = NumericProperty(0)
+    len_gt = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super(Viewer, self).__init__(**kwargs)
@@ -115,7 +124,7 @@ class Viewer(BoxLayout):
         self.current_time_window = 0
         Window.bind(mouse_pos=self.on_mouse_pos)
         self.clicked_mouse_pos = None
-        self.last_added_box = -1
+        self.last_added_box_idx = -1
         self.cropped_region = [0, 0, 0, 0]
 
     def window_to_image_coords(self, x, y, flip=True):
@@ -138,36 +147,41 @@ class Viewer(BoxLayout):
     def on_mouse_pos(self, window, pos):
         image_x, image_y = self.window_to_image_coords(pos[0], pos[1])
         self.mouse_on_image = True
-        if 0 <= image_x <= self.image.texture.width:
+        if self.cropped_region[0] <= image_x <= self.cropped_region[0] + self.cropped_region[2]:
             self.mouse_position[0] = int(image_x)
-        elif image_x < 0:
-            self.mouse_position[0] = 0
+        elif image_x < self.cropped_region[0]:
+            self.mouse_position[0] = int(self.cropped_region[0])
             self.mouse_on_image = False
-        elif image_x > self.image.texture.width:
-            self.mouse_position[0] = self.image.texture.width
+        elif image_x > self.cropped_region[2]:
+            self.mouse_position[0] = int(self.cropped_region[2])
             self.mouse_on_image = False
-        if 0 <= image_y <= self.image.texture.height:
+        if self.cropped_region[1] <= image_y <= self.cropped_region[1] + self.cropped_region[3]:
             self.mouse_position[1] = int(self.image.texture.height - image_y)
-        elif image_y < 0:
-            self.mouse_position[1] = self.image.texture.height
+        elif image_y < self.cropped_region[1]:
+            self.mouse_position[1] = int(self.cropped_region[3])
             self.mouse_on_image = False
-        elif image_y > self.image.texture.height:
-            self.mouse_position[1] = 0
+        elif image_y > self.cropped_region[3]:
+            self.mouse_position[1] = int(self.cropped_region[1])
             self.mouse_on_image = False
 
     def remove_last_bbox(self):
         for v in self.visualisers:
             if isinstance(v, VisualiserBoundingBoxes):
                 data_dict = v.get_data()
-                for d in data_dict:
+                if self.last_added_box_idx != -1 and data_dict['orderAdded'][self.last_added_box_idx] != -1:
+                    for d in data_dict:
+                        try:
+                            data_dict[d] = np.delete(data_dict[d], self.last_added_box_idx)
+                        except IndexError:
+                            return
                     try:
-                        if self.last_added_box != -1:
-                            data_dict[d] = np.delete(data_dict[d], self.last_added_box)
-                        else:
-                            return  # TODO you can only undo the very last added box
-                    except IndexError:
-                        return
+                        self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
+                    except ValueError:
+                        self.last_added_box_idx = -1
+                else:
+                    return
                 v.set_data(data_dict)
+                self.len_gt = len(data_dict['ts'])
                 self.get_frame(self.current_time, self.current_time_window)
 
     def save_bboxes(self, path, ending_time):
@@ -188,7 +202,7 @@ class Viewer(BoxLayout):
                         for b in boxes_at_time:
                             boxes.append(np.concatenate(([t], b)))
             else:
-                boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['maxY'], data_dict['minX'],
+                boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
                                          data_dict['maxX'], data_dict['label']))
             np.savetxt(os.path.join(path, 'ground_truth.csv'), boxes, fmt='%f')
 
@@ -200,11 +214,11 @@ class Viewer(BoxLayout):
                     viz = v
                     break
 
-            data_dict['ts'][self.last_added_box] = self.current_time
-            data_dict['minY'][self.last_added_box] = min(self.mouse_position[1], self.clicked_mouse_pos[1])
-            data_dict['maxY'][self.last_added_box] = max(self.mouse_position[1], self.clicked_mouse_pos[1])
-            data_dict['minX'][self.last_added_box] = min(self.mouse_position[0], self.clicked_mouse_pos[0])
-            data_dict['maxX'][self.last_added_box] = max(self.mouse_position[0], self.clicked_mouse_pos[0])
+            data_dict['ts'][self.last_added_box_idx] = self.current_time
+            data_dict['minY'][self.last_added_box_idx] = min(self.mouse_position[1], self.clicked_mouse_pos[1])
+            data_dict['maxY'][self.last_added_box_idx] = max(self.mouse_position[1], self.clicked_mouse_pos[1])
+            data_dict['minX'][self.last_added_box_idx] = min(self.mouse_position[0], self.clicked_mouse_pos[0])
+            data_dict['maxX'][self.last_added_box_idx] = max(self.mouse_position[0], self.clicked_mouse_pos[0])
             viz.set_data(data_dict)
             self.get_frame(self.current_time, self.current_time_window)
         return False
@@ -237,14 +251,14 @@ class Viewer(BoxLayout):
                     viz = v
                     break
             if data_dict is None:
-
                 data_dict = {
                     'ts': np.array([self.current_time]),
                     'minY': np.array([self.mouse_position[1]]),
                     'minX': np.array([self.mouse_position[0]]),
                     'maxY': np.array([self.mouse_position[1]]),
                     'maxX': np.array([self.mouse_position[0]]),
-                    'label': np.array([self.label])
+                    'label': np.array([self.label]),
+                    'orderAdded': np.array([0])
                 }
                 viz = VisualiserBoundingBoxes(data_dict)
                 self.settings['boundingBoxes'] = viz.get_settings()
@@ -256,13 +270,23 @@ class Viewer(BoxLayout):
                 data_dict['maxY'] = np.append(data_dict['maxY'], self.mouse_position[1])
                 data_dict['maxX'] = np.append(data_dict['maxX'], self.mouse_position[0])
                 data_dict['label'] = np.append(data_dict['label'], self.label)
+                try:
+                    added_box = data_dict['orderAdded'].max() + 1
+                except ValueError:
+                    added_box = 0
+                except KeyError:
+                    data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
+                    added_box = 0
+
+                data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_box)
             # Sorting wrt timestamps
             argsort = np.argsort(data_dict['ts'])
-            self.last_added_box = np.argmax(argsort)
             for d in data_dict:
                 if hasattr(data_dict[d], '__len__'):
                     data_dict[d] = data_dict[d][argsort]
 
+            self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
+            self.len_gt = len(data_dict['ts'])
             viz.set_data(data_dict)
             self.get_frame(self.current_time, self.current_time_window)
             self.clicked_mouse_pos = self.mouse_position[0], self.mouse_position[1]
@@ -273,12 +297,14 @@ class Viewer(BoxLayout):
 
     def init_visualisers(self):
         if self.visualisers is not None and self.visualisers:
-            for v in self.visualisers:  # TODO manage cases with multiple of below data_types
+            for v in self.visualisers:
                 if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
                     self.colorfmt = v.get_colorfmt()
                     self.data_shape = v.get_dims()
                     buf_shape = (dp(self.data_shape[0]), dp(self.data_shape[1]))
                     self.image.texture = Texture.create(size=buf_shape, colorfmt=self.colorfmt)
+                if v.data_type == 'boundingBoxes':
+                    self.len_gt = len(v.get_data()['ts'])
 
     def on_settings(self, instance, settings_dict):
         if self.settings_box is not None:

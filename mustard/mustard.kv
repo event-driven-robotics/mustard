@@ -206,7 +206,7 @@
     Label:
         size_hint: 1, 0.05
         id: label_status
-        text: 'Use num keys to change tag. Labeling {}'.format(str(root.label)) if root.labeling else ''
+        text: 'Use num keys to change tag. Labeling {}\nLabeled boxes = {}'.format(str(root.label), str(root.len_gt)) if root.labeling else ''
 
 
 
