@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 setup(
     name='mustard-gui',
     packages=find_packages(),
-    version='1.0.3',
+    version='1.0.4dev',
     license='gpl',
     description='MUlti STream Agnostic Representation Dataplayer',
     long_description=long_description,
@@ -26,7 +26,7 @@ setup(
                       'matplotlib',
                       'numpy',
                       'tqdm',
-                      'bimvee'],
+                      'bimvee==1.0.9dev'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
