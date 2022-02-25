@@ -179,7 +179,7 @@ class Viewer(BoxLayout):
                     except ValueError:
                         self.last_added_box_idx = -1
                 else:
-                    return  # TODO you can only undo the very last added box
+                    return
                 v.set_data(data_dict)
                 self.len_gt = len(data_dict['ts'])
                 self.get_frame(self.current_time, self.current_time_window)
@@ -297,7 +297,7 @@ class Viewer(BoxLayout):
 
     def init_visualisers(self):
         if self.visualisers is not None and self.visualisers:
-            for v in self.visualisers:  # TODO manage cases with multiple of below data_types
+            for v in self.visualisers:
                 if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
                     self.colorfmt = v.get_colorfmt()
                     self.data_shape = v.get_dims()
