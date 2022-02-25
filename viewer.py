@@ -138,21 +138,21 @@ class Viewer(BoxLayout):
     def on_mouse_pos(self, window, pos):
         image_x, image_y = self.window_to_image_coords(pos[0], pos[1])
         self.mouse_on_image = True
-        if 0 <= image_x <= self.image.texture.width:
+        if self.cropped_region[0] <= image_x <= self.cropped_region[0] + self.cropped_region[2]:
             self.mouse_position[0] = int(image_x)
-        elif image_x < 0:
-            self.mouse_position[0] = 0
+        elif image_x < self.cropped_region[0]:
+            self.mouse_position[0] = int(self.cropped_region[0])
             self.mouse_on_image = False
-        elif image_x > self.image.texture.width:
-            self.mouse_position[0] = self.image.texture.width
+        elif image_x > self.cropped_region[2]:
+            self.mouse_position[0] = int(self.cropped_region[2])
             self.mouse_on_image = False
-        if 0 <= image_y <= self.image.texture.height:
+        if self.cropped_region[1] <= image_y <= self.cropped_region[1] + self.cropped_region[3]:
             self.mouse_position[1] = int(self.image.texture.height - image_y)
-        elif image_y < 0:
-            self.mouse_position[1] = self.image.texture.height
+        elif image_y < self.cropped_region[1]:
+            self.mouse_position[1] = int(self.cropped_region[3])
             self.mouse_on_image = False
-        elif image_y > self.image.texture.height:
-            self.mouse_position[1] = 0
+        elif image_y > self.cropped_region[3]:
+            self.mouse_position[1] = int(self.cropped_region[1])
             self.mouse_on_image = False
 
     def remove_last_bbox(self):
