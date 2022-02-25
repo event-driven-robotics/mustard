@@ -113,6 +113,7 @@ class Viewer(BoxLayout):
     orientation = 'vertical'
     mouse_position = ListProperty([0, 0])
     label = NumericProperty(0)
+    len_gt = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super(Viewer, self).__init__(**kwargs)
@@ -180,6 +181,7 @@ class Viewer(BoxLayout):
                 else:
                     return  # TODO you can only undo the very last added box
                 v.set_data(data_dict)
+                self.len_gt = len(data_dict['ts'])
                 self.get_frame(self.current_time, self.current_time_window)
 
     def save_bboxes(self, path, ending_time):
@@ -274,7 +276,7 @@ class Viewer(BoxLayout):
                     added_box = 0
                 except KeyError:
                     data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
-                    added_box = len(data_dict['ts']) - 1
+                    added_box = 0
 
                 data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_box)
             # Sorting wrt timestamps
@@ -284,6 +286,7 @@ class Viewer(BoxLayout):
                     data_dict[d] = data_dict[d][argsort]
 
             self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
+            self.len_gt = len(data_dict['ts'])
             viz.set_data(data_dict)
             self.get_frame(self.current_time, self.current_time_window)
             self.clicked_mouse_pos = self.mouse_position[0], self.mouse_position[1]
@@ -300,6 +303,8 @@ class Viewer(BoxLayout):
                     self.data_shape = v.get_dims()
                     buf_shape = (dp(self.data_shape[0]), dp(self.data_shape[1]))
                     self.image.texture = Texture.create(size=buf_shape, colorfmt=self.colorfmt)
+                if v.data_type == 'boundingBoxes':
+                    self.len_gt = len(v.get_data()['ts'])
 
     def on_settings(self, instance, settings_dict):
         if self.settings_box is not None:
