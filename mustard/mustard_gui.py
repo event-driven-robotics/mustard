@@ -261,6 +261,12 @@ class DataController(GridLayout):
                             size_hint=(0.9, 0.9))
         self._popup.open()
 
+    def show_warning_popup(self, message):
+        self.dismiss_popup()
+        self._popup = WarningPopup(label_text=message,
+                                   size_hint=(0.5, 0.5))
+        self._popup.open()
+
     def show_load(self):
         self.dismiss_popup()
         content = LoadDialog(load=self.load,
@@ -294,7 +300,8 @@ class DataController(GridLayout):
                 from bimvee.importRosbag.importRosbag.importRosbag import importRosbag
             topics = importRosbag(filePathOrName=self.filePathOrName, listTopics=True)
             self.show_template_dialog(topics)
-
+        except FileNotFoundError:
+            self.show_warning_popup('Could not find any loadable dataset')
         self.update_children()
 
 
