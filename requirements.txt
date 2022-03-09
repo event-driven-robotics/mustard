@@ -1,5 +1,0 @@
-kivy==2.0.0
-matplotlib
-numpy
-tqdm
-bimvee

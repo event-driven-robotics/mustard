@@ -22,7 +22,7 @@ setup(
     url='https://github.com/event-driven-robotics/mustard',
     keywords=['event', 'event camera', 'event-based', 'event-driven', 'spike', 'dvs', 'dynamic vision sensor',
               'neuromorphic', 'aer', 'address-event representation' 'spiking neural network', 'davis', 'atis', 'celex'],
-    install_requires=['kivy==2.0.0',
+    install_requires=['kivy>=2.0.0',
                       'matplotlib',
                       'numpy',
                       'tqdm',
