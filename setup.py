@@ -26,7 +26,7 @@ setup(
                       'matplotlib',
                       'numpy',
                       'tqdm',
-                      'bimvee==1.0.9dev'],
+                      'bimvee>=1.0.15'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
