@@ -204,6 +204,8 @@ class Viewer(BoxLayout):
             else:
                 boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
                                          data_dict['maxX'], data_dict['label']))
+            if not os.path.isdir(path):
+                path = os.path.dirname(path)
             np.savetxt(os.path.join(path, 'ground_truth.csv'), boxes, fmt='%f')
 
     def on_touch_move(self, touch):
