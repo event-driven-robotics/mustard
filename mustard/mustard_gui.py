@@ -16,9 +16,26 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 Use kivy to create an app which can receive data dicts as imported by bimvee
 importAe, and allow synchronised playback for each of the contained channels and datatypes. 
 """
-# standard imports 
+# standard imports
+from mustard.viewer import Viewer
+from kivy.core.window import Window
+from kivy.properties import DictProperty
+from kivy.properties import StringProperty, NumericProperty
+from kivy.properties import ObjectProperty
+from kivy.uix.checkbox import CheckBox
+from kivy.uix.popup import Popup
+from kivy.uix.textinput import TextInput
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.boxlayout import BoxLayout
+from kivy.clock import Clock
+from kivy.uix.slider import Slider
+from kivy.app import App
 import numpy as np
-import sys, os
+import sys
+import os
+import json
+from textwrap import wrap
 
 os.environ['KIVY_NO_ARGS'] = 'T'
 
@@ -40,19 +57,6 @@ except ModuleNotFoundError:
     pass
 
 # kivy imports
-from kivy.app import App
-from kivy.uix.slider import Slider
-from kivy.clock import Clock
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.textinput import TextInput
-from kivy.uix.popup import Popup
-from kivy.uix.checkbox import CheckBox
-from kivy.properties import ObjectProperty
-from kivy.properties import StringProperty, NumericProperty
-from kivy.properties import DictProperty
-from kivy.core.window import Window
 
 # To get the graphics, set this as the current working directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -78,8 +82,6 @@ except ModuleNotFoundError:
     from bimvee.visualiser import VisualiserImu
     from bimvee.timestamps import getLastTimestamp
     from bimvee.visualiser import VisualiserSkeleton
-
-from mustard.viewer import Viewer
 
 
 class ErrorPopup(Popup):
@@ -160,6 +162,14 @@ class DataController(GridLayout):
 
     def __init__(self, **kwargs):
         super(DataController, self).__init__(**kwargs)
+        self.tmp_cache_path = os.path.join(os.path.dirname(__file__), 'tmp.json')
+        try:
+            with open(self.tmp_cache_path, 'r') as f:
+                self.cache_json = json.load(f)
+        except FileNotFoundError:
+            with open(self.tmp_cache_path, 'w+') as f:
+                self.cache_json = {"LastLoadedPath" : "~"}
+                json.dump(self.cache_json, f)
 
     def update_children(self):
         for child in self.children:
@@ -225,7 +235,7 @@ class DataController(GridLayout):
                         print('    ' * recursionDepth + 'Creating a new viewer, of type: ' + key_name)
                         self.add_viewer_and_resize(in_dict,
                                                    channel_name=seen_keys[-2])
-                        break # We suppose that all timestamped data are at the same level
+                        break  # We suppose that all timestamped data are at the same level
                     else:  # recurse through the sub-dict
                         self.add_viewer_for_each_channel_and_data_type(in_dict[key_name],
                                                                        seen_keys=seen_keys,
@@ -242,7 +252,7 @@ class DataController(GridLayout):
             self.remove_widget(self.children[0])
             print('Removed an old viewer; num remaining viewers: ' + str(len(self.children)))
         if (self.data_dict is None) or not self.data_dict:
-            # When using ntupleviz programmatically, pass an empty dict or None 
+            # When using ntupleviz programmatically, pass an empty dict or None
             # to allow the container to be passed again once updated
             return
         self.ending_time = float(getLastTimestamp(self.data_dict))  # timer is watching this
@@ -270,7 +280,8 @@ class DataController(GridLayout):
     def show_load(self):
         self.dismiss_popup()
         content = LoadDialog(load=self.load,
-                             cancel=self.dismiss_popup)
+                             cancel=self.dismiss_popup,
+                             load_path=self.cache_json['LastLoadedPath'])
         self._popup = Popup(title="Load file", content=content,
                             size_hint=(0.9, 0.9))
         self._popup.open()
@@ -282,26 +293,21 @@ class DataController(GridLayout):
         except ModuleNotFoundError:
             from bimvee.importAe import importAe
 
-        from os.path import join
-
         # If both path and selection are None than it will try to reload previously given path
         if path is not None or selection is not None:
             if selection:
-                self.filePathOrName = join(path, selection[0])
+                self.filePathOrName = os.path.join(path, selection[0])
             else:
                 self.filePathOrName = path
 
+        self.cache_json['LastLoadedPath'] = self.filePathOrName
+        with open(self.tmp_cache_path, 'w') as f:
+            json.dump(self.cache_json, f)
         try:
-            self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template)
-        except ValueError:
-            try:
-                from importRosbag import importRosbag
-            except ModuleNotFoundError:
-                from bimvee.importRosbag.importRosbag.importRosbag import importRosbag
-            topics = importRosbag(filePathOrName=self.filePathOrName, listTopics=True)
-            self.show_template_dialog(topics)
-        except FileNotFoundError:
-            self.show_warning_popup('Could not find any loadable dataset')
+            self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template) 
+            # TODO Handle rosbag case with template dialog
+        except Exception as e:
+            self.show_warning_popup('\n'.join(wrap(str(e), width=40)))
         self.update_children()
 
 
