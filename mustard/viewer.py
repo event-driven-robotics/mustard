@@ -491,7 +491,10 @@ class Viewer(BoxLayout):
         self.current_time_window = time_window
         for v in self.visualisers:
             data_dict[v.data_type] = {}
-            data_dict[v.data_type] = v.get_frame(time_value, time_window, **self.settings_values[v.data_type])
+            try:
+                data_dict[v.data_type] = v.get_frame(time_value, time_window, **self.settings_values[v.data_type])
+            except KeyError:
+                data_dict[v.data_type] = v.get_frame(time_value, time_window)
             self.colorfmt = v.get_colorfmt()
         self.data.update(data_dict)
 

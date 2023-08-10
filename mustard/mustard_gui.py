@@ -179,34 +179,29 @@ class DataController(GridLayout):
         visualisers = []
         settings = {}
         for data_type in data_dict.keys():
-            settings[data_type] = {}
             if data_type == 'dvs':
                 visualiser = VisualiserDvs(data_dict[data_type])
-                settings[data_type] = visualiser.get_settings()
             elif data_type == 'frame':
                 visualiser = VisualiserFrame(data_dict[data_type])
             elif data_type == 'pose6q':
                 visualiser = VisualiserPose6q(data_dict[data_type])
-                settings[data_type] = visualiser.get_settings()
                 channel_name = channel_name + '\nred=x green=y, blue=z'
             elif data_type == 'point3':
                 visualiser = VisualiserPoint3(data_dict[data_type])
-                settings[data_type] = visualiser.get_settings()
             elif data_type == 'boundingBoxes':
                 visualiser = VisualiserBoundingBoxes(data_dict[data_type])
-                settings[data_type] = visualiser.get_settings()
             elif data_type == 'flowMap':
                 visualiser = VisualiserOpticFlow(data_dict[data_type])
             elif data_type == 'imu':
                 visualiser = VisualiserImu(data_dict[data_type])
-                settings[data_type] = visualiser.get_settings()
                 channel_name = channel_name + '\nred=x green=y, blue=z'
             elif data_type == 'skeleton':
                 visualiser = VisualiserSkeleton(data_dict[data_type])
-                settings[data_type] = visualiser.get_settings()
             else:
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
                 continue
+            
+            settings[data_type] = visualiser.get_settings()
             visualisers.append(visualiser)
         if visualisers:
             new_viewer = Viewer()
