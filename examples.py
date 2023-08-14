@@ -118,8 +118,8 @@ app.root.data_controller.data_dict = container
 
 import numpy as np
 
-ts = np.array([0, 1, 2, 3, 4], dtype=np.float64)
-point = np.zeros((5, 3), dtype=np.float64)
+ts = np.array([0, 1, 2, 3, 4], dtype=float)
+point = np.zeros((5, 3), dtype=float)
 # from neutral pose, to x = 1 (i.e. roll backwards through 180) 
 # back to neutral, then x to -1 ( i.e. roll forwards head over heels through 180)
 # back to neutral 
@@ -128,7 +128,7 @@ rotation = np.array([[1, 0, 0, 0],
                      [1, 0, 0, 0], 
                      [0, -1, 0, 0], 
                      [1, 0, 0, 0]],
-                    dtype=np.float64)
+                    dtype=float)
 
 container = {'pose6q': {'ts': ts,
                         'point': point,
