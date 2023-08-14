@@ -199,7 +199,7 @@ class Viewer(BoxLayout):
         self.visualisers.append(viz)
         self.labeling = True
 
-    def save_bboxes(self, path, ending_time):
+    def save_bboxes(self, path):
         self.labeling = False
         data_dict = None
         for v in self.visualisers:
@@ -211,17 +211,15 @@ class Viewer(BoxLayout):
             return
         if self.settings_values[viz.data_type]['interpolate']:
             boxes = []
-            for t in np.arange(0, ending_time, 0.01):  # TODO parametrize sample rate when saving interpolated
+            for t in np.arange(0, data_dict['ts'][-1], 0.01):  # TODO parametrize sample rate when saving interpolated
                 boxes_at_time = viz.get_frame(t, self.current_time_window, **self.settings_values[viz.data_type])
-                if boxes_at_time != [[0, 0, 0, 0]] and len(boxes_at_time):
+                if boxes_at_time is not None and len(boxes_at_time):
                     for b in boxes_at_time:
                         boxes.append(np.concatenate(([t], b)))
         else:
             boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
                                         data_dict['maxX'], data_dict['label']))
-        if not os.path.isdir(path):
-            path = os.path.dirname(path)
-        np.savetxt(os.path.join(path, 'ground_truth.csv'), boxes, fmt='%f')
+        np.savetxt(path, boxes, fmt='%f')
 
     def on_touch_move(self, touch):
         if self.clicked_mouse_pos is not None:

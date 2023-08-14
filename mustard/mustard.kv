@@ -107,6 +107,38 @@
                 text: "Load"
                 on_release: root.load(filechooser.path, filechooser.selection)
 
+<SaveDialog>:
+    BoxLayout:
+        size: root.size
+        pos: root.pos
+        orientation: "vertical"
+
+        FileChooserListView:
+            id: filechooser
+            path: root.save_path if os.path.isdir(root.save_path) else os.path.dirname(root.save_path)
+        Label:
+            text: filechooser.path
+            size_hint_y: .05
+        BoxLayout:
+            size_hint_y: .08
+            Label:
+                text: "File Name"
+            TextInput:
+                id: filename
+                multiline: False
+                text: "ground_truth.csv"
+        BoxLayout:
+            size_hint_y: .2
+            padding: 10
+            spacing: 10
+            Button:
+                text: "Cancel"
+                on_release: root.cancel()
+            Button:
+                text: "Save"
+                on_release: root.save(os.path.join(filechooser.path, filename.text)); app.root.data_controller.dismiss_popup()
+
+
 <WarningPopup>
     title: "WARNING"
     size_hint: .5, .2
@@ -179,7 +211,7 @@
                 on_release:  self.source='graphics/flip_horiz.png';
             Button:
                 text: 'Annotate' if not root.labeling else 'Save'
-                on_release: root.save_bboxes(app.root.data_controller.filePathOrName, app.root.data_controller.ending_time) if root.labeling else root.init_annotation()
+                on_release: app.root.data_controller.show_save(save_fun=root.save_bboxes) if root.labeling else root.init_annotation()
             Button:
                 text: 'Undo'
                 disabled: not root.labeling

@@ -102,6 +102,11 @@ class LoadDialog(FloatLayout):
     load_path = StringProperty(None)
 
 
+class SaveDialog(FloatLayout):
+    save = ObjectProperty(None)
+    cancel = ObjectProperty(None)
+    save_path = StringProperty(None)
+
 class DictEditor(GridLayout):
     dict = DictProperty(None)
 
@@ -281,6 +286,15 @@ class DataController(GridLayout):
                             size_hint=(0.9, 0.9))
         self._popup.open()
 
+    def show_save(self, save_fun):
+        self.dismiss_popup()
+        content = SaveDialog(save=save_fun,
+                             cancel=self.dismiss_popup,
+                             save_path=self.cache_json['LastLoadedPath'])
+        self._popup = Popup(title="Save file", content=content,
+                            size_hint=(0.9, 0.9))
+        self._popup.open()
+
     def load(self, path, selection, template=None):
         self.dismiss_popup()
         try:
@@ -295,15 +309,18 @@ class DataController(GridLayout):
             else:
                 self.filePathOrName = path
 
-        self.cache_json['LastLoadedPath'] = self.filePathOrName
-        with open(self.tmp_cache_path, 'w') as f:
-            json.dump(self.cache_json, f)
+        self.update_cache_element("LastLoadedPath", self.filePathOrName)
         try:
             self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template) 
             # TODO Handle rosbag case with template dialog
         except Exception as e:
             self.show_warning_popup('\n'.join(wrap(str(e), width=40)))
         self.update_children()
+
+    def update_cache_element(self, key, val):
+        self.cache_json[key] = val
+        with open(self.tmp_cache_path, 'w') as f:
+            json.dump(self.cache_json, f)
 
 
 class TimeSlider(Slider):
