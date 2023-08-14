@@ -184,29 +184,44 @@ class Viewer(BoxLayout):
                 self.len_gt = len(data_dict['ts'])
                 self.get_frame(self.current_time, self.current_time_window)
 
+    def init_annotation(self):                
+        data_dict = {
+                    'ts': np.array([]),
+                    'minY': np.array([]),
+                    'minX': np.array([]),
+                    'maxY': np.array([]),
+                    'maxX': np.array([]),
+                    'label': np.array([]),
+                    'orderAdded': np.array([])
+                }
+        viz = VisualiserBoundingBoxes(data=data_dict)
+        self.settings['boundingBoxes'] = viz.get_settings()
+        self.visualisers.append(viz)
+        self.labeling = True
+
     def save_bboxes(self, path, ending_time):
-        if self.labeling:
-            data_dict = None
-            for v in self.visualisers:
-                if isinstance(v, VisualiserBoundingBoxes):
-                    data_dict = v.get_data()
-                    viz = v
-                    break
-            if data_dict is None:
-                return
-            if self.settings_values[viz.data_type]['interpolate']:
-                boxes = []
-                for t in np.arange(0, ending_time, 0.01):  # TODO parametrize sample rate when saving interpolated
-                    boxes_at_time = viz.get_frame(t, self.current_time_window, **self.settings_values[viz.data_type])
-                    if boxes_at_time != [[0, 0, 0, 0]] and len(boxes_at_time):
-                        for b in boxes_at_time:
-                            boxes.append(np.concatenate(([t], b)))
-            else:
-                boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
-                                         data_dict['maxX'], data_dict['label']))
-            if not os.path.isdir(path):
-                path = os.path.dirname(path)
-            np.savetxt(os.path.join(path, 'ground_truth.csv'), boxes, fmt='%f')
+        self.labeling = False
+        data_dict = None
+        for v in self.visualisers:
+            if isinstance(v, VisualiserBoundingBoxes):
+                data_dict = v.get_data()
+                viz = v
+                break
+        if data_dict is None:
+            return
+        if self.settings_values[viz.data_type]['interpolate']:
+            boxes = []
+            for t in np.arange(0, ending_time, 0.01):  # TODO parametrize sample rate when saving interpolated
+                boxes_at_time = viz.get_frame(t, self.current_time_window, **self.settings_values[viz.data_type])
+                if boxes_at_time != [[0, 0, 0, 0]] and len(boxes_at_time):
+                    for b in boxes_at_time:
+                        boxes.append(np.concatenate(([t], b)))
+        else:
+            boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
+                                        data_dict['maxX'], data_dict['label']))
+        if not os.path.isdir(path):
+            path = os.path.dirname(path)
+        np.savetxt(os.path.join(path, 'ground_truth.csv'), boxes, fmt='%f')
 
     def on_touch_move(self, touch):
         if self.clicked_mouse_pos is not None:
@@ -245,42 +260,26 @@ class Viewer(BoxLayout):
         if self.transform_allowed:
             return False
         if self.labeling:
-            data_dict = None
-            viz = None
             for v in self.visualisers:
                 if isinstance(v, VisualiserBoundingBoxes):
                     data_dict = v.get_data()
                     viz = v
                     break
-            if data_dict is None:
-                data_dict = {
-                    'ts': np.array([self.current_time]),
-                    'minY': np.array([self.mouse_position[1]]),
-                    'minX': np.array([self.mouse_position[0]]),
-                    'maxY': np.array([self.mouse_position[1]]),
-                    'maxX': np.array([self.mouse_position[0]]),
-                    'label': np.array([self.label]),
-                    'orderAdded': np.array([0])
-                }
-                viz = VisualiserBoundingBoxes(data_dict)
-                self.settings['boundingBoxes'] = viz.get_settings()
-                self.visualisers.append(viz)
-            else:
-                data_dict['ts'] = np.append(data_dict['ts'], self.current_time)
-                data_dict['minY'] = np.append(data_dict['minY'], self.mouse_position[1])
-                data_dict['minX'] = np.append(data_dict['minX'], self.mouse_position[0])
-                data_dict['maxY'] = np.append(data_dict['maxY'], self.mouse_position[1])
-                data_dict['maxX'] = np.append(data_dict['maxX'], self.mouse_position[0])
-                data_dict['label'] = np.append(data_dict['label'], self.label)
-                try:
-                    added_box = data_dict['orderAdded'].max() + 1
-                except ValueError:
-                    added_box = 0
-                except KeyError:
-                    data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
-                    added_box = 0
+            data_dict['ts'] = np.append(data_dict['ts'], self.current_time)
+            data_dict['minY'] = np.append(data_dict['minY'], self.mouse_position[1])
+            data_dict['minX'] = np.append(data_dict['minX'], self.mouse_position[0])
+            data_dict['maxY'] = np.append(data_dict['maxY'], self.mouse_position[1])
+            data_dict['maxX'] = np.append(data_dict['maxX'], self.mouse_position[0])
+            data_dict['label'] = np.append(data_dict['label'], self.label)
+            try:
+                added_box = data_dict['orderAdded'].max() + 1
+            except ValueError:
+                added_box = 0
+            except KeyError:
+                data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
+                added_box = 0
 
-                data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_box)
+            data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_box)
             # Sorting wrt timestamps
             argsort = np.argsort(data_dict['ts'])
             for d in data_dict:
