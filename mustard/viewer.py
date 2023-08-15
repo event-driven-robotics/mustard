@@ -184,7 +184,11 @@ class Viewer(BoxLayout):
                 self.len_gt = len(data_dict['ts'])
                 self.get_frame(self.current_time, self.current_time_window)
 
-    def init_annotation(self):                
+    def init_annotation(self):
+        self.labeling = True
+        for v in self.visualisers:
+            if isinstance(v, VisualiserBoundingBoxes):
+                return                
         data_dict = {
                     'ts': np.array([]),
                     'minY': np.array([]),
@@ -197,7 +201,7 @@ class Viewer(BoxLayout):
         viz = VisualiserBoundingBoxes(data=data_dict)
         self.settings['boundingBoxes'] = viz.get_settings()
         self.visualisers.append(viz)
-        self.labeling = True
+        
 
     def save_bboxes(self, path):
         self.labeling = False
@@ -211,7 +215,7 @@ class Viewer(BoxLayout):
             return
         if self.settings_values[viz.data_type]['interpolate']:
             boxes = []
-            for t in np.arange(0, data_dict['ts'][-1], 0.01):  # TODO parametrize sample rate when saving interpolated
+            for t in np.arange(0, data_dict['ts'][-1] + 0.01, 0.01):  # TODO parametrize sample rate when saving interpolated
                 boxes_at_time = viz.get_frame(t, self.current_time_window, **self.settings_values[viz.data_type])
                 if boxes_at_time is not None and len(boxes_at_time):
                     for b in boxes_at_time:
