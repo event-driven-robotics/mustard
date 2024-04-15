@@ -60,13 +60,34 @@ class EyeTracker(Widget):
     iris_y_center = NumericProperty(0.0)
     ellipse_major = NumericProperty(0.0)
     ellipse_minor = NumericProperty(0.0)
+    ellipse_orientation = NumericProperty(0.0)
+    gaze_line_x = NumericProperty(0.0)
+    gaze_line_y = NumericProperty(0.0)
 
-    def __init__(self, iris_x_center, iris_y_center, ellipse_major, ellipse_minor, **kwargs):
+    def __init__(self, 
+                 iris_x_center, 
+                 iris_y_center, 
+                 ellipse_major, 
+                 ellipse_minor, 
+                 ellipse_orientation, 
+                 eyeball_phi, 
+                 eyeball_theta, 
+                 eyeball_center_x, 
+                 eyeball_center_y, 
+                 eyeball_radius, 
+                 **kwargs):
         super(EyeTracker, self).__init__(**kwargs)
         self.iris_x_center = int(iris_x_center)
         self.iris_y_center = int(iris_y_center)
         self.ellipse_major = int(ellipse_major)
         self.ellipse_minor = int(ellipse_minor)
+        self.ellipse_orientation = int(ellipse_orientation)
+        
+        r = 0.5
+        center_x_small = np.sqrt(1 - r ** 2)*np.sin(eyeball_theta)
+        center_y_small = np.sqrt(1 - r ** 2)*(-np.sin(eyeball_phi)*np.cos(eyeball_theta))
+        self.gaze_line_x = int(eyeball_center_x + center_x_small)
+        self.gaze_line_y = int(eyeball_center_y + center_y_small)
         Window.bind(mouse_pos=self.on_mouse_pos)
 
     def on_mouse_pos(self, window, pos):
@@ -508,11 +529,19 @@ class Viewer(BoxLayout):
         h_ratio = image_height / texture_height
         iris_x_center = x_img + (w_ratio * eye_tracking['iris_x_center'])
         iris_y_center = y_img + (h_ratio * (texture_height - eye_tracking['iris_y_center']))
-
+        eyeball_x = x_img + (w_ratio * eye_tracking['eyeball_x'])
+        eyeball_y = y_img + (h_ratio * (texture_height - eye_tracking['eyeball_y']))
+        
         eye_track = EyeTracker(iris_x_center=iris_x_center,
                    iris_y_center=iris_y_center,
                    ellipse_major=eye_tracking['ellispe_major_length'] * w_ratio,
                    ellipse_minor=eye_tracking['ellipse_minor_length'] * h_ratio,
+                   ellipse_orientation=eye_tracking['ellipse_orientation'],
+                    eyeball_phi=eye_tracking['eyeball_phi'],
+                    eyeball_theta=eye_tracking['eyeball_theta'],
+                    eyeball_center_x=eyeball_x,
+                    eyeball_center_y=eyeball_y,
+                    eyeball_radius=eye_tracking['eyeball_radius']
                    )
         self.image.add_widget(eye_track)
 
