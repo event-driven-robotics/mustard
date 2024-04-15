@@ -45,6 +45,16 @@
                 pos: self.pos
                 size: self.texture_size
 
+<EyeTracker@Widget>:
+    size_hint: 1, 1
+    canvas:
+        Color:
+            rgba: 1, 0, 0, 1
+        Ellipse:
+            pos: self.iris_x_center - self.ellipse_major // 2, self.iris_y_center - self.ellipse_minor // 2
+            size: self.ellipse_major, self.ellipse_minor
+
+
 <DictEditor@GridLayout>
     cols: 4
     padding: 10

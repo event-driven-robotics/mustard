@@ -67,6 +67,7 @@ try:
     from visualiser import VisualiserPoint3
     from visualiser import VisualiserPose6q
     from visualiser import VisualiserBoundingBoxes
+    from visualiser import VisualiserEyeTracking
     from visualiser import VisualiserOpticFlow
     from visualiser import VisualiserImu
     from timestamps import getLastTimestamp
@@ -78,6 +79,7 @@ except ModuleNotFoundError:
     from bimvee.visualiser import VisualiserPoint3
     from bimvee.visualiser import VisualiserPose6q
     from bimvee.visualiser import VisualiserBoundingBoxes
+    from bimvee.visualiser import VisualiserEyeTracking
     from bimvee.visualiser import VisualiserOpticFlow
     from bimvee.visualiser import VisualiserImu
     from bimvee.timestamps import getLastTimestamp
@@ -202,6 +204,8 @@ class DataController(GridLayout):
                 channel_name = channel_name + '\nred=x green=y, blue=z'
             elif data_type == 'skeleton':
                 visualiser = VisualiserSkeleton(data_dict[data_type])
+            elif data_type == 'eyeTracking':
+                visualiser = VisualiserEyeTracking(data_dict[data_type])
             else:
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
                 continue

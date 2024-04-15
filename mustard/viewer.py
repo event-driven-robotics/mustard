@@ -54,6 +54,24 @@ class BoundingBox(Widget):
         self.mouse_over = win_coords[0] < pos[0] < win_coords[0] + self.size[0] and\
                           win_coords[1] < pos[1] < win_coords[1] + self.size[1]
 
+class EyeTracker(Widget):
+    mouse_over = BooleanProperty(False)
+    iris_x_center = NumericProperty(0.0)
+    iris_y_center = NumericProperty(0.0)
+    ellipse_major = NumericProperty(0.0)
+    ellipse_minor = NumericProperty(0.0)
+
+    def __init__(self, iris_x_center, iris_y_center, ellipse_major, ellipse_minor, **kwargs):
+        super(EyeTracker, self).__init__(**kwargs)
+        self.iris_x_center = int(iris_x_center)
+        self.iris_y_center = int(iris_y_center)
+        self.ellipse_major = int(ellipse_major)
+        self.ellipse_minor = int(ellipse_minor)
+        Window.bind(mouse_pos=self.on_mouse_pos)
+
+    def on_mouse_pos(self, window, pos):
+        pass
+
 
 class LabeledBoundingBox(BoundingBox):
     obj_label = StringProperty('')
@@ -306,7 +324,7 @@ class Viewer(BoxLayout):
                     self.data_shape = v.get_dims()
                     buf_shape = (dp(self.data_shape[0]), dp(self.data_shape[1]))
                     self.image.texture = Texture.create(size=buf_shape, colorfmt=self.colorfmt)
-                if v.data_type == 'boundingBoxes':
+                if v.data_type in ['boundingBoxes', 'eyeTracking', 'skeleton']:
                     self.len_gt = len(v.get_data()['ts'])
 
     def on_settings(self, instance, settings_dict):
@@ -369,6 +387,8 @@ class Viewer(BoxLayout):
                 self.update_b_boxes(self.data[data_type])
             elif data_type in ['skeleton']:
                 self.update_skeleton(self.data[data_type])
+            elif data_type in ['eyeTracking']:
+                self.update_eye_tracking(self.data[data_type])
 
     def update_image(self, data):
         if self.image.texture is not None:
@@ -478,6 +498,23 @@ class Viewer(BoxLayout):
             box_item.id = 'box_{}'.format(i),
 
             self.image.add_widget(box_item)
+
+    def update_eye_tracking(self, eye_tracking):
+        texture_width = self.image.texture.width
+        texture_height = self.image.texture.height
+        x_img, y_img, image_width, image_height = self.get_image_bounding_box()
+
+        w_ratio = image_width / texture_width
+        h_ratio = image_height / texture_height
+        iris_x_center = x_img + (w_ratio * eye_tracking['iris_x_center'])
+        iris_y_center = y_img + (h_ratio * (texture_height - eye_tracking['iris_y_center']))
+
+        eye_track = EyeTracker(iris_x_center=iris_x_center,
+                   iris_y_center=iris_y_center,
+                   ellipse_major=eye_tracking['ellispe_major_length'] * w_ratio,
+                   ellipse_minor=eye_tracking['ellipse_minor_length'] * h_ratio,
+                   )
+        self.image.add_widget(eye_track)
 
     def get_image_bounding_box(self):
         image_width = self.image.norm_image_size[0]
