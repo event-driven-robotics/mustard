@@ -165,6 +165,8 @@ class Viewer(BoxLayout):
         self.clicked_mouse_pos = None
         self.last_added_box_idx = -1
         self.cropped_region = [0, 0, 0, 0]
+        self.is_settings_cb_enabled = True
+        self.are_settings_being_updated = False
 
     def window_to_image_coords(self, x, y, flip=True):
         scale = self.image.parent.scale
@@ -357,7 +359,11 @@ class Viewer(BoxLayout):
 
     def on_settings_change(self, instance, value):
         self.settings_values[instance.parent.id][instance.id] = value
+        if not self.is_settings_cb_enabled: 
+            return
+        self.are_settings_being_updated = True
         self.get_frame(self.current_time, self.current_time_window)
+        self.are_settings_being_updated = False
 
     def update_settings(self, parent_widget, settings_dict, settings_values):
         for key in settings_dict:
@@ -389,6 +395,7 @@ class Viewer(BoxLayout):
                 parent_widget.add_widget(slider)
                 settings_values[key] = slider.value
                 slider.bind(value=self.on_settings_change)
+                settings_values[key+'_widget'] = slider
             elif settings_dict[key]['type'] == 'value_list':
                 parent_widget.add_widget(Label(text=key))
                 from kivy.uix.spinner import Spinner
@@ -521,24 +528,36 @@ class Viewer(BoxLayout):
             self.image.add_widget(box_item)
 
     def update_eye_tracking(self, eye_tracking):
+        if eye_tracking is None:
+            return
+        settings = self.settings_values['eyeTracking']
+        if not self.are_settings_being_updated:
+            self.is_settings_cb_enabled = False
+            settings['y_widget'].value = int(eye_tracking['iris_y_center'])
+            settings['x_widget'].value = int(eye_tracking['iris_x_center'])
+            settings['phi_widget'].value = int(np.rad2deg(eye_tracking['eyeball_phi']))
+            settings['theta_widget'].value = int(np.rad2deg(eye_tracking['eyeball_theta']))
+            settings['orientation_widget'].value = int(eye_tracking['ellipse_orientation'])
+            settings['major_widget'].value = int(eye_tracking['ellipse_major_length'])
+            settings['minor_widget'].value = int(eye_tracking['ellipse_minor_length'])
+            self.is_settings_cb_enabled = True
         texture_width = self.image.texture.width
         texture_height = self.image.texture.height
         x_img, y_img, image_width, image_height = self.get_image_bounding_box()
-
         w_ratio = image_width / texture_width
         h_ratio = image_height / texture_height
-        iris_x_center = x_img + (w_ratio * eye_tracking['iris_x_center'])
-        iris_y_center = y_img + (h_ratio * (texture_height - eye_tracking['iris_y_center']))
+        iris_x_center = x_img + (w_ratio * settings['x'])
+        iris_y_center = y_img + (h_ratio * (texture_height - settings['y']))
         eyeball_x = x_img + (w_ratio * eye_tracking['eyeball_x'])
         eyeball_y = y_img + (h_ratio * (texture_height - eye_tracking['eyeball_y']))
         
         eye_track = EyeTracker(iris_x_center=iris_x_center,
                    iris_y_center=iris_y_center,
-                   ellipse_major=eye_tracking['ellispe_major_length'] * w_ratio,
-                   ellipse_minor=eye_tracking['ellipse_minor_length'] * h_ratio,
-                   ellipse_orientation=eye_tracking['ellipse_orientation'],
-                    eyeball_phi=eye_tracking['eyeball_phi'],
-                    eyeball_theta=eye_tracking['eyeball_theta'],
+                   ellipse_major=settings['major'] * w_ratio,
+                   ellipse_minor=settings['minor'] * h_ratio,
+                   ellipse_orientation=settings['orientation'],
+                    eyeball_phi=np.deg2rad(settings['phi']),
+                    eyeball_theta=np.deg2rad(settings['theta']),
                     eyeball_center_x=eyeball_x,
                     eyeball_center_y=eyeball_y,
                     eyeball_radius=eye_tracking['eyeball_radius']
