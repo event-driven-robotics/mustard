@@ -18,7 +18,7 @@
 
 <BoundingBox@Widget>:
     bb: 0.0, 0.0, 0.0, 0.0
-    bb_color: 1, .1, 1, .9
+    bb_color: 1, 1, 1, 1
     label: 0
     size_hint: 1, 1
     canvas:
@@ -48,23 +48,22 @@
 <EyeTracker@Widget>:
     size_hint: 1, 1
     canvas:
-        Rotate:
-            axis: 0,0,1
-            angle: -self.ellipse_orientation
-            origin: self.iris_x_center, self.iris_y_center
         Color:
             rgba: 1, 0, 0, 1
         Line:
-            ellipse: self.iris_x_center - self.ellipse_major // 2, self.iris_y_center - self.ellipse_minor // 2, self.ellipse_major, self.ellipse_minor
+            points: self.ellipse_points
         Color:
             rgba: 0, 1, 0, 1
         Ellipse:
             size: 6, 6
             pos: self.iris_x_center - 3, self.iris_y_center - 3
+        Ellipse:
+            size: 6, 6
+            pos: self.center_x - 3, self.center_y - 3
         Color:
             rgba: 0, 0, 1, 1
         Line:
-            points: self.iris_x_center, self.iris_y_center, self.gaze_line_x, self.gaze_line_y 
+            points: self.center_x, self.center_y, self.gaze_line_x, self.gaze_line_y 
 
 <DictEditor@GridLayout>
     cols: 4
