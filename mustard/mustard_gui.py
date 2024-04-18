@@ -401,6 +401,7 @@ class RootWidget(BoxLayout):
             self.ids['time_slider'].play_pause()
         for viewer in self.data_controller.children:
             viewer.transform_allowed = 'shift' in modifiers
+            viewer.ctrl_pressed = 'ctrl' in modifiers
             try:
                 viewer.label = int(keycode[1][-1])
             except ValueError:
@@ -411,6 +412,7 @@ class RootWidget(BoxLayout):
     def _on_keyboard_up(self, keyboard, keycode):
         for viewer in self.data_controller.children:
             viewer.transform_allowed = False
+            viewer.ctrl_pressed = False
             # Return True to accept the key. Otherwise, it will be used by the system.
         return True
 

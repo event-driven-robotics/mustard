@@ -230,16 +230,16 @@
                 on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
                 on_release:  self.source='graphics/flip_horiz.png';
             Button:
-                text: 'Annotate' if not root.labeling else 'Save'
-                on_release: app.root.data_controller.show_save(save_fun=root.save_bboxes) if root.labeling else root.init_annotation()
+                text: 'Annotate' if root.annotator is None else 'Save'
+                on_release: app.root.data_controller.show_save(save_fun=root.save_annotations) if root.annotator is not None else root.init_annotation()
             Button:
                 text: 'Undo'
-                disabled: not root.labeling
-                on_release: root.remove_last_bbox()
+                disabled: root.annotator is None
+                on_release: root.undo()
             Button:
                 text: 'Stop'
-                disabled: not root.labeling
-                on_release: root.labeling = False
+                disabled: root.annotator is None
+                on_release: root.close_annotations()
         ZoomableImage:
             id: zoomable_image
             do_rotation: False
@@ -258,7 +258,7 @@
     Label:
         size_hint: 1, 0.05
         id: label_status
-        text: 'Use num keys to change tag. Labeling {}\nLabeled boxes = {}'.format(str(root.label), str(root.len_gt)) if root.labeling else ''
+        text: 'Use num keys to change tag. Labeling {}\nAnnotated labels = {}'.format(str(root.label), str(len(root.annotator))) if root.annotator is not None else ''
 
 
 

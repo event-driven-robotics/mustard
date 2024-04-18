@@ -25,7 +25,7 @@ from kivy.uix.slider import Slider
 from kivy.uix.scatter import Scatter
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
-from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictProperty, NumericProperty
+from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictProperty, NumericProperty, ObjectProperty
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
@@ -34,8 +34,108 @@ from kivy.graphics.transformation import Matrix
 from kivy.graphics.vertex_instructions import Rectangle
 
 from bimvee.visualisers.visualiserBoundingBoxes import VisualiserBoundingBoxes
+from bimvee.visualisers.visualiserEyeTracking import VisualiserEyeTracking
 import os
 
+class AnnotatorBase:
+    def __init__(self, visualizer) -> None:
+        self.visualizer = visualizer
+        self.current_time = None
+        self.annotating = False
+
+    def get_data_type(self):
+        return self.visualizer.data_type
+
+    def __len__(self):
+        return len(self.visualizer.get_data()['ts'])
+
+class BoundingBoxAnnotator(AnnotatorBase):
+
+    def __init__(self, visualizer) -> None:
+        
+        self.last_added_box_idx = None
+        self.initial_mouse_pos = None
+        super().__init__(visualizer)
+
+
+    def start_annotation(self, current_time, mouse_pos, label=0):
+        data_dict = self.visualizer.get_data()
+        self.current_time = current_time
+        self.initial_mouse_pos = mouse_pos
+        data_dict['ts'] = np.append(data_dict['ts'], current_time)
+        data_dict['minY'] = np.append(data_dict['minY'], mouse_pos[1])
+        data_dict['minX'] = np.append(data_dict['minX'], mouse_pos[0])
+        data_dict['maxY'] = np.append(data_dict['maxY'], mouse_pos[1])
+        data_dict['maxX'] = np.append(data_dict['maxX'], mouse_pos[0])
+        data_dict['label'] = np.append(data_dict['label'], label)
+        try:
+            added_box = data_dict['orderAdded'].max() + 1
+        except ValueError:
+            added_box = 0
+        except KeyError:
+            data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
+            added_box = 0
+
+        data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_box)
+        # Sorting wrt timestamps
+        argsort = np.argsort(data_dict['ts'])
+        for d in data_dict:
+            if hasattr(data_dict[d], '__len__'):
+                data_dict[d] = data_dict[d][argsort]
+
+        self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
+        self.visualizer.set_data(data_dict)
+        self.annotating = True
+
+    def undo(self):
+        data_dict = self.visualizer.get_data()
+        if self.last_added_box_idx != -1 and data_dict['orderAdded'][self.last_added_box_idx] != -1:
+            for d in data_dict:
+                try:
+                    data_dict[d] = np.delete(data_dict[d], self.last_added_box_idx)
+                except IndexError:
+                    return
+            try:
+                self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
+            except ValueError:
+                self.last_added_box_idx = -1
+        else:
+            return
+        self.visualizer.set_data(data_dict)
+
+    def save(self, path, **kwargs):
+        data_dict = self.visualizer.get_data()
+        viz = self.visualizer
+        if kwargs.get('interpolate'):
+            boxes = []
+            for t in np.arange(0, data_dict['ts'][-1] + 0.01, 0.01):  # TODO parametrize sample rate when saving interpolated
+                boxes_at_time = viz.get_frame(t, 0.01, **kwargs)
+                if boxes_at_time is not None and len(boxes_at_time):
+                    for b in boxes_at_time:
+                        boxes.append(np.concatenate(([t], b)))
+        else:
+            boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
+                                        data_dict['maxX'], data_dict['label']))
+        np.savetxt(path, boxes, fmt='%f')
+
+    def update(self, mouse_position):
+        if self.annotating:
+            data_dict = self.visualizer.get_data()
+            data_dict['ts'][self.last_added_box_idx] = self.current_time
+            data_dict['minY'][self.last_added_box_idx] = min(mouse_position[1], self.initial_mouse_pos[1])
+            data_dict['maxY'][self.last_added_box_idx] = max(mouse_position[1], self.initial_mouse_pos[1])
+            data_dict['minX'][self.last_added_box_idx] = min(mouse_position[0], self.initial_mouse_pos[0])
+            data_dict['maxX'][self.last_added_box_idx] = max(mouse_position[0], self.initial_mouse_pos[0])
+            self.visualizer.set_data(data_dict)
+
+    def stop_annotation(self):
+        data_dict = self.visualizer.get_data()
+        try:
+            if data_dict['minY'][-1] == data_dict['maxY'][-1] or data_dict['minX'][-1] == data_dict['maxX'][-1]:
+                self.undo()
+        except IndexError:
+            pass
+        self.annotating = False
 
 class BoundingBox(Widget):
     mouse_over = BooleanProperty(False)
@@ -91,11 +191,6 @@ class EyeTracker(Widget):
         self.gaze_line_y = int(radius * 1.5 * (c*(-np.sin(theta)*np.cos(phi))) + center_y)
         self.center_x = int(center_x)
         self.center_y = int(center_y)
-        Window.bind(mouse_pos=self.on_mouse_pos)
-
-    def on_mouse_pos(self, window, pos):
-        pass
-
 
 class LabeledBoundingBox(BoundingBox):
     obj_label = StringProperty('')
@@ -145,8 +240,8 @@ class Viewer(BoxLayout):
     visualisers = ListProperty([], allownone=True)
     flipHoriz = BooleanProperty(False)
     flipVert = BooleanProperty(False)
-    labeling = BooleanProperty(False)
     transform_allowed = BooleanProperty(False)
+    ctrl_pressed = BooleanProperty(False)
     mouse_on_image = BooleanProperty(False)
     settings = DictProperty({}, allownone=True)
     settings_values = DictProperty({}, allownone=True)
@@ -155,7 +250,7 @@ class Viewer(BoxLayout):
     orientation = 'vertical'
     mouse_position = ListProperty([0, 0])
     label = NumericProperty(0)
-    len_gt = NumericProperty(0)
+    annotator = ObjectProperty(None, allownone=True)
 
     def __init__(self, **kwargs):
         super(Viewer, self).__init__(**kwargs)
@@ -208,31 +303,12 @@ class Viewer(BoxLayout):
             self.mouse_position[1] = int(self.cropped_region[1])
             self.mouse_on_image = False
 
-    def remove_last_bbox(self):
-        for v in self.visualisers:
-            if isinstance(v, VisualiserBoundingBoxes):
-                data_dict = v.get_data()
-                if self.last_added_box_idx != -1 and data_dict['orderAdded'][self.last_added_box_idx] != -1:
-                    for d in data_dict:
-                        try:
-                            data_dict[d] = np.delete(data_dict[d], self.last_added_box_idx)
-                        except IndexError:
-                            return
-                    try:
-                        self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
-                    except ValueError:
-                        self.last_added_box_idx = -1
-                else:
-                    return
-                v.set_data(data_dict)
-                self.len_gt = len(data_dict['ts'])
-                self.get_frame(self.current_time, self.current_time_window)
 
     def init_annotation(self):
-        self.labeling = True
         for v in self.visualisers:
             if isinstance(v, VisualiserBoundingBoxes):
-                return                
+                self.annotator = BoundingBoxAnnotator(v)
+                return
         data_dict = {
                     'ts': np.array([]),
                     'minY': np.array([]),
@@ -245,57 +321,28 @@ class Viewer(BoxLayout):
         viz = VisualiserBoundingBoxes(data=data_dict)
         self.settings['boundingBoxes'] = viz.get_settings()
         self.visualisers.append(viz)
+        self.annotator = BoundingBoxAnnotator(viz)
         
+    def undo(self):
+        self.annotator.undo()
+        self.get_frame(self.current_time, self.current_time_window)
 
-    def save_bboxes(self, path):
-        self.labeling = False
-        data_dict = None
-        for v in self.visualisers:
-            if isinstance(v, VisualiserBoundingBoxes):
-                data_dict = v.get_data()
-                viz = v
-                break
-        if data_dict is None:
-            return
-        if self.settings_values[viz.data_type]['interpolate']:
-            boxes = []
-            for t in np.arange(0, data_dict['ts'][-1] + 0.01, 0.01):  # TODO parametrize sample rate when saving interpolated
-                boxes_at_time = viz.get_frame(t, self.current_time_window, **self.settings_values[viz.data_type])
-                if boxes_at_time is not None and len(boxes_at_time):
-                    for b in boxes_at_time:
-                        boxes.append(np.concatenate(([t], b)))
-        else:
-            boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
-                                        data_dict['maxX'], data_dict['label']))
-        np.savetxt(path, boxes, fmt='%f')
+    def save_annotations(self, path):
+        self.annotator.save(path, **self.settings_values[self.annotator.get_data_type()])
+
+    def close_annotations(self):
+        self.annotator = None
 
     def on_touch_move(self, touch):
-        if self.clicked_mouse_pos is not None:
-            for v in self.visualisers:
-                if isinstance(v, VisualiserBoundingBoxes):
-                    data_dict = v.get_data()
-                    viz = v
-                    break
-
-            data_dict['ts'][self.last_added_box_idx] = self.current_time
-            data_dict['minY'][self.last_added_box_idx] = min(self.mouse_position[1], self.clicked_mouse_pos[1])
-            data_dict['maxY'][self.last_added_box_idx] = max(self.mouse_position[1], self.clicked_mouse_pos[1])
-            data_dict['minX'][self.last_added_box_idx] = min(self.mouse_position[0], self.clicked_mouse_pos[0])
-            data_dict['maxX'][self.last_added_box_idx] = max(self.mouse_position[0], self.clicked_mouse_pos[0])
-            viz.set_data(data_dict)
+        if self.annotator is not None:
+            self.annotator.update(self.mouse_position)
             self.get_frame(self.current_time, self.current_time_window)
         return False
 
     def on_touch_up(self, touch):
-        self.clicked_mouse_pos = None
-        for v in self.visualisers:
-            if isinstance(v, VisualiserBoundingBoxes):
-                data_dict = v.get_data()
-                try:
-                    if data_dict['minY'][-1] == data_dict['maxY'][-1] or data_dict['minX'][-1] == data_dict['maxX'][-1]:
-                        self.remove_last_bbox()
-                except IndexError:
-                    pass
+        if self.annotator is not None:
+            self.annotator.stop_annotation()
+            self.get_frame(self.current_time, self.current_time_window)
         return False
 
     def on_touch_down(self, touch):
@@ -305,38 +352,9 @@ class Viewer(BoxLayout):
             return False
         if self.transform_allowed:
             return False
-        if self.labeling:
-            for v in self.visualisers:
-                if isinstance(v, VisualiserBoundingBoxes):
-                    data_dict = v.get_data()
-                    viz = v
-                    break
-            data_dict['ts'] = np.append(data_dict['ts'], self.current_time)
-            data_dict['minY'] = np.append(data_dict['minY'], self.mouse_position[1])
-            data_dict['minX'] = np.append(data_dict['minX'], self.mouse_position[0])
-            data_dict['maxY'] = np.append(data_dict['maxY'], self.mouse_position[1])
-            data_dict['maxX'] = np.append(data_dict['maxX'], self.mouse_position[0])
-            data_dict['label'] = np.append(data_dict['label'], self.label)
-            try:
-                added_box = data_dict['orderAdded'].max() + 1
-            except ValueError:
-                added_box = 0
-            except KeyError:
-                data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
-                added_box = 0
-
-            data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_box)
-            # Sorting wrt timestamps
-            argsort = np.argsort(data_dict['ts'])
-            for d in data_dict:
-                if hasattr(data_dict[d], '__len__'):
-                    data_dict[d] = data_dict[d][argsort]
-
-            self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
-            self.len_gt = len(data_dict['ts'])
-            viz.set_data(data_dict)
+        if self.annotator is not None:
+            self.annotator.start_annotation(self.current_time, list(self.mouse_position), self.label)
             self.get_frame(self.current_time, self.current_time_window)
-            self.clicked_mouse_pos = self.mouse_position[0], self.mouse_position[1]
         return False
 
     def on_visualisers(self, instance, value):
@@ -350,8 +368,6 @@ class Viewer(BoxLayout):
                     self.data_shape = v.get_dims()
                     buf_shape = (dp(self.data_shape[0]), dp(self.data_shape[1]))
                     self.image.texture = Texture.create(size=buf_shape, colorfmt=self.colorfmt)
-                if v.data_type in ['boundingBoxes', 'eyeTracking', 'skeleton']:
-                    self.len_gt = len(v.get_data()['ts'])
 
     def on_settings(self, instance, settings_dict):
         if self.settings_box is not None:
