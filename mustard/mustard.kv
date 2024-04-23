@@ -258,9 +258,7 @@
     Label:
         size_hint: 1, 0.05
         id: label_status
-        text: 'Use num keys to change tag. Labeling {}\nAnnotated labels = {}'.format(str(root.label), str(len(root.annotator))) if root.annotator is not None else ''
-
-
+        text: root.annotator.get_instructions() if root.annotator is not None else ''
 
 <RootWidget>
     orientation:'horizontal'

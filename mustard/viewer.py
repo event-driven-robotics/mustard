@@ -42,23 +42,37 @@ class AnnotatorBase:
         self.visualizer = visualizer
         self.current_time = None
         self.annotating = False
+        self.label = 0
+        self.last_added_annotation_idx = None
+        self.initial_mouse_pos = None
 
     def get_data_type(self):
         return self.visualizer.data_type
 
     def __len__(self):
         return len(self.visualizer.get_data()['ts'])
-
+    
+    def start_annotation(self, current_time, mouse_pos):
+        raise NotImplementedError
+    
+    def undo(self):
+        raise NotImplementedError
+    
+    def save(self, path, **kwargs):
+        raise NotImplementedError
+    
+    def update(self, touch):
+        raise NotImplementedError
+    
+    def stop_annotation(self):
+        raise NotImplementedError
+    
+    def get_instructions(self):
+        return ''
+    
 class BoundingBoxAnnotator(AnnotatorBase):
 
-    def __init__(self, visualizer) -> None:
-        
-        self.last_added_box_idx = None
-        self.initial_mouse_pos = None
-        super().__init__(visualizer)
-
-
-    def start_annotation(self, current_time, mouse_pos, label=0):
+    def start_annotation(self, current_time, mouse_pos):
         data_dict = self.visualizer.get_data()
         self.current_time = current_time
         self.initial_mouse_pos = mouse_pos
@@ -67,7 +81,7 @@ class BoundingBoxAnnotator(AnnotatorBase):
         data_dict['minX'] = np.append(data_dict['minX'], mouse_pos[0])
         data_dict['maxY'] = np.append(data_dict['maxY'], mouse_pos[1])
         data_dict['maxX'] = np.append(data_dict['maxX'], mouse_pos[0])
-        data_dict['label'] = np.append(data_dict['label'], label)
+        data_dict['label'] = np.append(data_dict['label'], self.label)
         try:
             added_box = data_dict['orderAdded'].max() + 1
         except ValueError:
@@ -136,6 +150,9 @@ class BoundingBoxAnnotator(AnnotatorBase):
         except IndexError:
             pass
         self.annotating = False
+
+    def get_instructions(self):
+        return 'Use num keys to change tag'
 
 class BoundingBox(Widget):
     mouse_over = BooleanProperty(False)
@@ -249,7 +266,6 @@ class Viewer(BoxLayout):
     colorfmt = StringProperty('luminance')
     orientation = 'vertical'
     mouse_position = ListProperty([0, 0])
-    label = NumericProperty(0)
     annotator = ObjectProperty(None, allownone=True)
 
     def __init__(self, **kwargs):
@@ -353,7 +369,7 @@ class Viewer(BoxLayout):
         if self.transform_allowed:
             return False
         if self.annotator is not None:
-            self.annotator.start_annotation(self.current_time, list(self.mouse_position), self.label)
+            self.annotator.start_annotation(self.current_time, list(self.mouse_position))
             self.get_frame(self.current_time, self.current_time_window)
         return False
 

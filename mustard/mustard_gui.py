@@ -403,8 +403,8 @@ class RootWidget(BoxLayout):
             viewer.transform_allowed = 'shift' in modifiers
             viewer.ctrl_pressed = 'ctrl' in modifiers
             try:
-                viewer.label = int(keycode[1][-1])
-            except ValueError:
+                viewer.annotator.label = int(keycode[1][-1])
+            except (AttributeError, ValueError):
                 continue
             # Return True to accept the key. Otherwise, it will be used by the system.
         return True
