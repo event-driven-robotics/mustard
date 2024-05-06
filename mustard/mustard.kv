@@ -247,7 +247,7 @@
             scale_min: 0.5
             scale_max: 10
             clickable_area: (box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
-            transform_allowed: root.transform_allowed
+            transform_allowed: 'shift' in root.modifiers
             on_bbox: root.crop_image(*self.clickable_area)
             Image:
                 id: image

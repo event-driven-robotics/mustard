@@ -36,6 +36,8 @@ import sys
 import os
 import json
 from textwrap import wrap
+from kivy.config import Config
+Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 os.environ['KIVY_NO_ARGS'] = 'T'
 
@@ -400,8 +402,7 @@ class RootWidget(BoxLayout):
         if keycode[1] == 'spacebar':
             self.ids['time_slider'].play_pause()
         for viewer in self.data_controller.children:
-            viewer.transform_allowed = 'shift' in modifiers
-            viewer.ctrl_pressed = 'ctrl' in modifiers
+            viewer.modifiers = modifiers
             try:
                 viewer.annotator.label = int(keycode[1][-1])
             except (AttributeError, ValueError):
@@ -411,8 +412,12 @@ class RootWidget(BoxLayout):
 
     def _on_keyboard_up(self, keyboard, keycode):
         for viewer in self.data_controller.children:
-            viewer.transform_allowed = False
-            viewer.ctrl_pressed = False
+            if keycode[1].endswith('ctrl'):
+                viewer.modifiers.remove('ctrl')
+            elif keycode[1].endswith('shift'):
+                viewer.modifiers.remove('shift')
+            elif keycode[1].startswith('alt'):
+                viewer.modifiers.remove('alt')
             # Return True to accept the key. Otherwise, it will be used by the system.
         return True
 

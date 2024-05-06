@@ -56,12 +56,25 @@ class AnnotatorBase:
         raise NotImplementedError
     
     def undo(self):
-        raise NotImplementedError
+        data_dict = self.visualizer.get_data()
+        if self.last_added_annotation_idx != -1 and data_dict['orderAdded'][self.last_added_annotation_idx] != -1:
+            for d in data_dict:
+                try:
+                    data_dict[d] = np.delete(data_dict[d], self.last_added_annotation_idx)
+                except IndexError:
+                    return
+            try:
+                self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
+            except ValueError:
+                self.last_added_annotation_idx = -1
+        else:
+            return
+        self.visualizer.set_data(data_dict)
     
     def save(self, path, **kwargs):
         raise NotImplementedError
     
-    def update(self, touch):
+    def update(self, mouse_position, modifiers):
         raise NotImplementedError
     
     def stop_annotation(self):
@@ -70,6 +83,36 @@ class AnnotatorBase:
     def get_instructions(self):
         return ''
     
+class EyeTrackingAnnotator(AnnotatorBase):
+    def start_annotation(self, current_time, mouse_pos):
+        data_dict = self.visualizer.get_data()
+        self.current_time = current_time
+        self.initial_mouse_pos = mouse_pos
+        self.annotation_idx = np.searchsorted(data_dict['ts'], current_time)
+        self.initial_data = {x: data_dict[x][self.annotation_idx] for x in data_dict if hasattr(data_dict[x], '__len__')}
+        self.visualizer.set_data(data_dict)
+        self.annotating = True
+
+
+    def update(self, mouse_position, modifiers):
+        if self.annotating:
+            data_dict = self.visualizer.get_data()
+            if 'ctrl' in modifiers:
+                data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + (mouse_position[0] - self.initial_mouse_pos[0])
+                data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + (mouse_position[1] - self.initial_mouse_pos[1])
+            elif 'alt' in modifiers:
+                data_dict['eyeball_radius'][self.annotation_idx] = self.initial_data['eyeball_radius'] - (mouse_position[1] - self.initial_mouse_pos[1])
+            else:
+                data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
+                data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
+                        
+            self.visualizer.set_data(data_dict)
+
+    def stop_annotation(self):
+        self.annotating = False
+    
+    def get_instructions(self):
+        return 'Annotating Eyes'
 class BoundingBoxAnnotator(AnnotatorBase):
 
     def start_annotation(self, current_time, mouse_pos):
@@ -83,39 +126,24 @@ class BoundingBoxAnnotator(AnnotatorBase):
         data_dict['maxX'] = np.append(data_dict['maxX'], mouse_pos[0])
         data_dict['label'] = np.append(data_dict['label'], self.label)
         try:
-            added_box = data_dict['orderAdded'].max() + 1
+            added_annotation = data_dict['orderAdded'].max() + 1
         except ValueError:
-            added_box = 0
+            added_annotation = 0
         except KeyError:
             data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
-            added_box = 0
+            added_annotation = 0
 
-        data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_box)
+        data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_annotation)
         # Sorting wrt timestamps
         argsort = np.argsort(data_dict['ts'])
         for d in data_dict:
             if hasattr(data_dict[d], '__len__'):
                 data_dict[d] = data_dict[d][argsort]
 
-        self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
+        self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
         self.visualizer.set_data(data_dict)
         self.annotating = True
 
-    def undo(self):
-        data_dict = self.visualizer.get_data()
-        if self.last_added_box_idx != -1 and data_dict['orderAdded'][self.last_added_box_idx] != -1:
-            for d in data_dict:
-                try:
-                    data_dict[d] = np.delete(data_dict[d], self.last_added_box_idx)
-                except IndexError:
-                    return
-            try:
-                self.last_added_box_idx = np.argmax(data_dict['orderAdded'])
-            except ValueError:
-                self.last_added_box_idx = -1
-        else:
-            return
-        self.visualizer.set_data(data_dict)
 
     def save(self, path, **kwargs):
         data_dict = self.visualizer.get_data()
@@ -132,14 +160,14 @@ class BoundingBoxAnnotator(AnnotatorBase):
                                         data_dict['maxX'], data_dict['label']))
         np.savetxt(path, boxes, fmt='%f')
 
-    def update(self, mouse_position):
+    def update(self, mouse_position, modifiers):
         if self.annotating:
             data_dict = self.visualizer.get_data()
-            data_dict['ts'][self.last_added_box_idx] = self.current_time
-            data_dict['minY'][self.last_added_box_idx] = min(mouse_position[1], self.initial_mouse_pos[1])
-            data_dict['maxY'][self.last_added_box_idx] = max(mouse_position[1], self.initial_mouse_pos[1])
-            data_dict['minX'][self.last_added_box_idx] = min(mouse_position[0], self.initial_mouse_pos[0])
-            data_dict['maxX'][self.last_added_box_idx] = max(mouse_position[0], self.initial_mouse_pos[0])
+            data_dict['ts'][self.last_added_annotation_idx] = self.current_time
+            data_dict['minY'][self.last_added_annotation_idx] = min(mouse_position[1], self.initial_mouse_pos[1])
+            data_dict['maxY'][self.last_added_annotation_idx] = max(mouse_position[1], self.initial_mouse_pos[1])
+            data_dict['minX'][self.last_added_annotation_idx] = min(mouse_position[0], self.initial_mouse_pos[0])
+            data_dict['maxX'][self.last_added_annotation_idx] = max(mouse_position[0], self.initial_mouse_pos[0])
             self.visualizer.set_data(data_dict)
 
     def stop_annotation(self):
@@ -257,8 +285,6 @@ class Viewer(BoxLayout):
     visualisers = ListProperty([], allownone=True)
     flipHoriz = BooleanProperty(False)
     flipVert = BooleanProperty(False)
-    transform_allowed = BooleanProperty(False)
-    ctrl_pressed = BooleanProperty(False)
     mouse_on_image = BooleanProperty(False)
     settings = DictProperty({}, allownone=True)
     settings_values = DictProperty({}, allownone=True)
@@ -266,6 +292,7 @@ class Viewer(BoxLayout):
     colorfmt = StringProperty('luminance')
     orientation = 'vertical'
     mouse_position = ListProperty([0, 0])
+    modifiers = ListProperty([])
     annotator = ObjectProperty(None, allownone=True)
 
     def __init__(self, **kwargs):
@@ -322,8 +349,8 @@ class Viewer(BoxLayout):
 
     def init_annotation(self):
         for v in self.visualisers:
-            if isinstance(v, VisualiserBoundingBoxes):
-                self.annotator = BoundingBoxAnnotator(v)
+            if isinstance(v, VisualiserEyeTracking):
+                self.annotator = EyeTrackingAnnotator(v)
                 return
         data_dict = {
                     'ts': np.array([]),
@@ -334,8 +361,8 @@ class Viewer(BoxLayout):
                     'label': np.array([]),
                     'orderAdded': np.array([])
                 }
-        viz = VisualiserBoundingBoxes(data=data_dict)
-        self.settings['boundingBoxes'] = viz.get_settings()
+        viz = VisualiserEyeTracking(data=data_dict)
+        self.settings['eyeTracking'] = viz.get_settings()
         self.visualisers.append(viz)
         self.annotator = BoundingBoxAnnotator(viz)
         
@@ -351,7 +378,7 @@ class Viewer(BoxLayout):
 
     def on_touch_move(self, touch):
         if self.annotator is not None:
-            self.annotator.update(self.mouse_position)
+            self.annotator.update(self.mouse_position, self.modifiers)
             self.get_frame(self.current_time, self.current_time_window)
         return False
 
@@ -366,7 +393,7 @@ class Viewer(BoxLayout):
             return True
         if not self.mouse_on_image:
             return False
-        if self.transform_allowed:
+        if 'shift' in self.modifiers:
             return False
         if self.annotator is not None:
             self.annotator.start_annotation(self.current_time, list(self.mouse_position))
