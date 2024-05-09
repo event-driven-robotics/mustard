@@ -32,11 +32,13 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.core.window import Window, Clock
 from kivy.graphics.transformation import Matrix
 from kivy.graphics.vertex_instructions import Rectangle
+from kivy.graphics import Color, Ellipse, Line
 from kivy.event import EventDispatcher
 
 from bimvee.visualisers.visualiserBoundingBoxes import VisualiserBoundingBoxes
 from bimvee.visualisers.visualiserEyeTracking import VisualiserEyeTracking
 import os
+
 
 class AnnotatorBase(EventDispatcher):
     instructions = StringProperty('')
@@ -55,10 +57,10 @@ class AnnotatorBase(EventDispatcher):
 
     def __len__(self):
         return len(self.visualizer.get_data()['ts'])
-    
+
     def start_annotation(self, current_time, mouse_pos):
         raise NotImplementedError
-    
+
     def undo(self):
         data_dict = self.visualizer.get_data()
         if self.last_added_annotation_idx != -1 and data_dict['orderAdded'][self.last_added_annotation_idx] != -1:
@@ -74,15 +76,24 @@ class AnnotatorBase(EventDispatcher):
         else:
             return
         self.visualizer.set_data(data_dict)
-    
+
     def save(self, path, **kwargs):
         raise NotImplementedError
-    
+
     def update(self, mouse_position, modifiers):
         raise NotImplementedError
-    
+
     def stop_annotation(self):
         raise NotImplementedError
+
+    @staticmethod
+    def sort_by_ts(data_dict):
+        argsort = np.argsort(data_dict['ts'])
+        for d in data_dict:
+            if hasattr(data_dict[d], '__len__'):
+                data_dict[d] = data_dict[d][argsort]
+        return data_dict
+
 
 class EyeTrackingAnnotator(AnnotatorBase):
 
@@ -98,12 +109,16 @@ class EyeTrackingAnnotator(AnnotatorBase):
         self.initial_mouse_pos = mouse_pos
         self.annotation_idx = np.searchsorted(data_dict['ts'], current_time)
         try:
-            self.initial_data = {x: data_dict[x][self.annotation_idx] for x in data_dict if hasattr(data_dict[x], '__len__')}
+            if abs(data_dict['ts'][self.annotation_idx] - current_time) > 0.03:
+                raise IndexError
+            self.initial_data = {x: data_dict[x][self.annotation_idx]
+                                 for x in data_dict if hasattr(data_dict[x], '__len__')}
         except IndexError:
             data_dict['ts'] = np.append(data_dict['ts'], current_time)
             data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], mouse_pos[1])
             data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], mouse_pos[0])
-            data_dict['eyeball_radius'] = np.append(data_dict['eyeball_radius'], 100)
+            data_dict['eyeball_radius'] = np.append(data_dict['eyeball_radius'], np.mean(
+                data_dict['eyeball_radius']) if len(data_dict['eyeball_radius']) else 100)
             data_dict['eyeball_phi'] = np.append(data_dict['eyeball_phi'], 0)
             data_dict['eyeball_theta'] = np.append(data_dict['eyeball_theta'], 0)
             try:
@@ -113,25 +128,31 @@ class EyeTrackingAnnotator(AnnotatorBase):
             data_dict['orderAdded'] = np.append(data_dict['orderAdded'], last_added)
             self.initial_data = {x: data_dict[x][-1] for x in data_dict if hasattr(data_dict[x], '__len__')}
 
-        self.visualizer.set_data(data_dict)
+        self.visualizer.set_data(self.sort_by_ts(data_dict))
         self.annotating = True
 
     def update(self, mouse_position, modifiers):
         if self.annotating:
             data_dict = self.visualizer.get_data()
             if 'ctrl' in modifiers:
-                data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + (mouse_position[0] - self.initial_mouse_pos[0])
-                data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + (mouse_position[1] - self.initial_mouse_pos[1])
+                data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + \
+                    (mouse_position[0] - self.initial_mouse_pos[0])
+                data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + \
+                    (mouse_position[1] - self.initial_mouse_pos[1])
             elif 'alt' in modifiers:
-                data_dict['eyeball_radius'][self.annotation_idx] = self.initial_data['eyeball_radius'] - (mouse_position[1] - self.initial_mouse_pos[1])
+                data_dict['eyeball_radius'][self.annotation_idx] = self.initial_data['eyeball_radius'] - \
+                    (mouse_position[1] - self.initial_mouse_pos[1])
             else:
-                data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
-                data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
-                        
+                data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - \
+                    np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
+                data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + \
+                    np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
+
             self.visualizer.set_data(data_dict)
 
     def stop_annotation(self):
         self.annotating = False
+
 
 class BoundingBoxAnnotator(AnnotatorBase):
 
@@ -158,30 +179,25 @@ class BoundingBoxAnnotator(AnnotatorBase):
             added_annotation = 0
 
         data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_annotation)
-        # Sorting wrt timestamps
-        argsort = np.argsort(data_dict['ts'])
-        for d in data_dict:
-            if hasattr(data_dict[d], '__len__'):
-                data_dict[d] = data_dict[d][argsort]
-
         self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
-        self.visualizer.set_data(data_dict)
-        self.annotating = True
 
+        self.visualizer.set_data(self.sort_by_ts(data_dict))
+        self.annotating = True
 
     def save(self, path, **kwargs):
         data_dict = self.visualizer.get_data()
         viz = self.visualizer
         if kwargs.get('interpolate'):
             boxes = []
-            for t in np.arange(0, data_dict['ts'][-1] + 0.01, 0.01):  # TODO parametrize sample rate when saving interpolated
+            # TODO parametrize sample rate when saving interpolated
+            for t in np.arange(0, data_dict['ts'][-1] + 0.01, 0.01):
                 boxes_at_time = viz.get_frame(t, 0.01, **kwargs)
                 if boxes_at_time is not None and len(boxes_at_time):
                     for b in boxes_at_time:
                         boxes.append(np.concatenate(([t], b)))
         else:
             boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
-                                        data_dict['maxX'], data_dict['label']))
+                                     data_dict['maxX'], data_dict['label']))
         np.savetxt(path, boxes, fmt='%f')
 
     def update(self, mouse_position, modifiers):
@@ -203,6 +219,7 @@ class BoundingBoxAnnotator(AnnotatorBase):
             pass
         self.annotating = False
 
+
 class BoundingBox(Widget):
     mouse_over = BooleanProperty(False)
 
@@ -218,45 +235,62 @@ class BoundingBox(Widget):
     def on_mouse_pos(self, window, pos):
         win_coords = self.to_window(*self.pos)
         self.mouse_over = win_coords[0] < pos[0] < win_coords[0] + self.size[0] and\
-                          win_coords[1] < pos[1] < win_coords[1] + self.size[1]
+            win_coords[1] < pos[1] < win_coords[1] + self.size[1]
+
 
 class EyeTracker(Widget):
     mouse_over = BooleanProperty(False)
-    iris_x_center = NumericProperty(0.0)
-    iris_y_center = NumericProperty(0.0)
-    gaze_line_x = NumericProperty(0.0)
-    gaze_line_y = NumericProperty(0.0)
-    center_x = NumericProperty(0.0)
-    center_y = NumericProperty(0.0)
+    iris_x_center = NumericProperty(None)
+    iris_y_center = NumericProperty(None)
+    gaze_line_x = NumericProperty(None)
+    gaze_line_y = NumericProperty(None)
+    center_x = NumericProperty(None)
+    center_y = NumericProperty(None)
     ellipse_points = ListProperty()
 
-    def __init__(self, 
-                 phi, 
-                 theta, 
-                 center_x, 
-                 center_y, 
-                 radius, 
+    def __init__(self,
+                 phi=None,
+                 theta=None,
+                 center_x=None,
+                 center_y=None,
+                 radius=None,
+                 pointcloud=None,
                  **kwargs):
         super(EyeTracker, self).__init__(**kwargs)
-        
-        r = 0.5
-        c = np.sqrt(1 - r ** 2)
 
-        self.ellipse_points = []
-        for alpha in np.arange(-np.pi, np.pi, np.pi/180):
-            xhat = r*np.cos(alpha)
-            yhat = r*np.sin(alpha)
-            x = radius*(xhat*np.cos(phi)+c*np.sin(phi)) + center_x
-            y = radius*((xhat*np.sin(phi)-c*np.cos(phi))*np.sin(theta)+yhat*np.cos(theta)) + center_y
-            self.ellipse_points.append(x)
-            self.ellipse_points.append(y)
+        if phi is not None:
+            r = 0.5
+            c = np.sqrt(1 - r ** 2)
 
-        self.iris_x_center = int(radius * (c*np.sin(phi)) + center_x)
-        self.iris_y_center = int(radius * (c*(-np.sin(theta)*np.cos(phi))) + center_y)
-        self.gaze_line_x = int(radius * 1.5 *(c*np.sin(phi)) + center_x)
-        self.gaze_line_y = int(radius * 1.5 * (c*(-np.sin(theta)*np.cos(phi))) + center_y)
-        self.center_x = int(center_x)
-        self.center_y = int(center_y)
+            self.ellipse_points = []
+            for alpha in np.arange(-np.pi, np.pi, np.pi/180):
+                xhat = r*np.cos(alpha)
+                yhat = r*np.sin(alpha)
+                x = radius*(xhat*np.cos(phi)+c*np.sin(phi)) + center_x
+                y = radius*((xhat*np.sin(phi)-c*np.cos(phi))*np.sin(theta)+yhat*np.cos(theta)) + center_y
+                self.ellipse_points.append(x)
+                self.ellipse_points.append(y)
+
+            self.iris_x_center = int(radius * (c*np.sin(phi)) + center_x)
+            self.iris_y_center = int(radius * (c*(-np.sin(theta)*np.cos(phi))) + center_y)
+            self.gaze_line_x = int(radius * 1.5 * (c*np.sin(phi)) + center_x)
+            self.gaze_line_y = int(radius * 1.5 * (c*(-np.sin(theta)*np.cos(phi))) + center_y)
+            self.center_x = int(center_x)
+            self.center_y = int(center_y)
+            with self.canvas:
+                Color(1, 0, 0, 1)
+                Line(points=self.ellipse_points)
+                Color(0, 1, 0, 1)
+                Ellipse(pos=(self.iris_x_center - 3, self.iris_y_center - 3), size=(6, 6))
+                Ellipse(pos=(self.center_x - 3, self.center_y - 3), size=(6, 6))
+                Color(0, 0, 1, 1)
+                Line(points=(self.center_x, self.center_y, self.gaze_line_x, self.gaze_line_y))
+        if pointcloud is not None:
+            with self.canvas:
+                Color(0.5, 0.5, 0.5, 0.5)
+                for x, y in pointcloud:
+                    Ellipse(pos=(x - 3, y - 3), size=(6, 6))
+
 
 class LabeledBoundingBox(BoundingBox):
     obj_label = StringProperty('')
@@ -368,28 +402,27 @@ class Viewer(BoxLayout):
             self.mouse_position[1] = int(self.cropped_region[1])
             self.mouse_on_image = False
 
-
     def init_annotation(self):
         for v in self.visualisers:
             if isinstance(v, VisualiserEyeTracking):
                 self.annotator = EyeTrackingAnnotator(v)
                 return
         data_dict = {
-                    'eyeball_radius': np.array([]),
-                    'eyeball_x': np.array([]),
-                    'eyeball_y': np.array([]),
-                    'eyeball_phi': np.array([]),
-                    'eyeball_theta': np.array([]),
-                    'ts': np.array([]),
-                    'orderAdded': np.array([])
-                }
+            'eyeball_radius': np.array([]),
+            'eyeball_x': np.array([]),
+            'eyeball_y': np.array([]),
+            'eyeball_phi': np.array([]),
+            'eyeball_theta': np.array([]),
+            'ts': np.array([]),
+            'orderAdded': np.array([])
+        }
         viz = VisualiserEyeTracking(data=data_dict)
         self.settings['eyeTracking'] = viz.get_settings()
         self.visualisers.append(viz)
         self.annotator = EyeTrackingAnnotator(viz)
         self.ids['label_status'].text = self.annotator.instructions
         self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
-        
+
     def undo(self):
         self.annotator.undo()
         self.get_frame(self.current_time, self.current_time_window)
@@ -445,7 +478,7 @@ class Viewer(BoxLayout):
 
     def on_settings_change(self, instance, value):
         self.settings_values[instance.parent.id][instance.id] = value
-        if not self.is_settings_cb_enabled: 
+        if not self.is_settings_cb_enabled:
             return
         self.are_settings_being_updated = True
         self.get_frame(self.current_time, self.current_time_window)
@@ -613,33 +646,49 @@ class Viewer(BoxLayout):
 
             self.image.add_widget(box_item)
 
-    def update_eye_tracking(self, eye_tracking):
-        if eye_tracking is None:
-            return
-        settings = self.settings_values['eyeTracking']
-        if not self.are_settings_being_updated:
-            self.is_settings_cb_enabled = False
-            settings['y_widget'].value = int(eye_tracking['eyeball_x'])
-            settings['x_widget'].value = int(eye_tracking['eyeball_y'])
-            settings['phi_widget'].value = int(np.rad2deg(eye_tracking['eyeball_phi']))
-            settings['theta_widget'].value = int(np.rad2deg(eye_tracking['eyeball_theta']))
-            settings['radius_widget'].value = int(eye_tracking['eyeball_radius'])
-            self.is_settings_cb_enabled = True
+    def get_aspect_ratio(self):
         texture_width = self.image.texture.width
         texture_height = self.image.texture.height
-        x_img, y_img, image_width, image_height = self.get_image_bounding_box()
+        image_width = self.image.norm_image_size[0]
+        image_height = self.image.norm_image_size[1]
         w_ratio = image_width / texture_width
         h_ratio = image_height / texture_height
-        eyeball_x = x_img + (w_ratio * settings['x'])
-        eyeball_y = y_img + (h_ratio * (texture_height - settings['y']))
-        
-        eye_track = EyeTracker(
-                   phi=np.deg2rad(settings['theta']), #TODO check with others how to fix this mismatch
-                   theta=np.deg2rad(-settings['phi']),
-                   center_x=eyeball_x,
-                   center_y=eyeball_y,
-                   radius=settings['radius'] * w_ratio
-                   )
+        return w_ratio, h_ratio
+
+    def img_to_window_coordinates(self, x, y):
+        w_ratio, h_ratio = self.get_aspect_ratio()
+        x_img, y_img, _, _ = self.get_image_bounding_box()
+        win_x = x_img + (w_ratio * x)
+        win_y = y_img + (h_ratio * (self.image.texture.height - y))
+        return win_x, win_y
+
+    def update_eye_tracking(self, eye_tracking):
+        eye_tracking_args = {}
+        settings = self.settings_values['eyeTracking']
+        if eye_tracking is not None:
+            if not self.are_settings_being_updated:
+                self.is_settings_cb_enabled = False
+                settings['y_widget'].value = int(eye_tracking['eyeball_x'])
+                settings['x_widget'].value = int(eye_tracking['eyeball_y'])
+                settings['phi_widget'].value = int(np.rad2deg(eye_tracking['eyeball_phi']))
+                settings['theta_widget'].value = int(np.rad2deg(eye_tracking['eyeball_theta']))
+                settings['radius_widget'].value = int(eye_tracking['eyeball_radius'])
+                self.is_settings_cb_enabled = True
+
+            eyeball_x, eyeball_y = self.img_to_window_coordinates(settings['x'], settings['y'])
+            eye_tracking_args.update({
+                'phi': np.deg2rad(settings['theta']),  # TODO check with others how to fix this mismatch
+                'theta': np.deg2rad(-settings['phi']),
+                'center_x': eyeball_x,
+                'center_y': eyeball_y,
+                'radius': settings['radius'] * self.get_aspect_ratio()[0]
+            })
+        if settings['show_xy_pointcloud']:
+            data_dict = self.annotator.visualizer.get_data()
+            eye_tracking_args['pointcloud'] = [self.img_to_window_coordinates(
+                y, x) for x, y in zip(data_dict['eyeball_x'], data_dict['eyeball_y'])]
+
+        eye_track = EyeTracker(**eye_tracking_args)
         self.image.add_widget(eye_track)
 
     def get_image_bounding_box(self):
