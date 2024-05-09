@@ -362,8 +362,6 @@ class Viewer(BoxLayout):
         self.clicked_mouse_pos = None
         self.last_added_box_idx = -1
         self.cropped_region = [0, 0, 0, 0]
-        self.is_settings_cb_enabled = True
-        self.are_settings_being_updated = False
 
     def window_to_image_coords(self, x, y, flip=True):
         scale = self.image.parent.scale
@@ -478,11 +476,7 @@ class Viewer(BoxLayout):
 
     def on_settings_change(self, instance, value):
         self.settings_values[instance.parent.id][instance.id] = value
-        if not self.is_settings_cb_enabled:
-            return
-        self.are_settings_being_updated = True
         self.get_frame(self.current_time, self.current_time_window)
-        self.are_settings_being_updated = False
 
     def update_settings(self, parent_widget, settings_dict, settings_values):
         for key in settings_dict:
@@ -514,7 +508,6 @@ class Viewer(BoxLayout):
                 parent_widget.add_widget(slider)
                 settings_values[key] = slider.value
                 slider.bind(value=self.on_settings_change)
-                settings_values[key+'_widget'] = slider
             elif settings_dict[key]['type'] == 'value_list':
                 parent_widget.add_widget(Label(text=key))
                 from kivy.uix.spinner import Spinner
@@ -666,22 +659,19 @@ class Viewer(BoxLayout):
         eye_tracking_args = {}
         settings = self.settings_values['eyeTracking']
         if eye_tracking is not None:
-            if not self.are_settings_being_updated:
-                self.is_settings_cb_enabled = False
-                settings['y_widget'].value = int(eye_tracking['eyeball_x'])
-                settings['x_widget'].value = int(eye_tracking['eyeball_y'])
-                settings['phi_widget'].value = int(np.rad2deg(eye_tracking['eyeball_phi']))
-                settings['theta_widget'].value = int(np.rad2deg(eye_tracking['eyeball_theta']))
-                settings['radius_widget'].value = int(eye_tracking['eyeball_radius'])
-                self.is_settings_cb_enabled = True
+            y = int(eye_tracking['eyeball_x'])
+            x = int(eye_tracking['eyeball_y'])
+            phi = int(np.rad2deg(eye_tracking['eyeball_phi']))
+            theta = int(np.rad2deg(eye_tracking['eyeball_theta']))
+            radius = int(eye_tracking['eyeball_radius'])
 
-            eyeball_x, eyeball_y = self.img_to_window_coordinates(settings['x'], settings['y'])
+            eyeball_x, eyeball_y = self.img_to_window_coordinates(x, y)
             eye_tracking_args.update({
-                'phi': np.deg2rad(settings['theta']),  # TODO check with others how to fix this mismatch
-                'theta': np.deg2rad(-settings['phi']),
+                'phi': np.deg2rad(theta),  # TODO check with others how to fix this mismatch
+                'theta': np.deg2rad(-phi),
                 'center_x': eyeball_x,
                 'center_y': eyeball_y,
-                'radius': settings['radius'] * self.get_aspect_ratio()[0]
+                'radius': radius * self.get_aspect_ratio()[0]
             })
         if settings['show_xy_pointcloud']:
             data_dict = self.annotator.visualizer.get_data()
