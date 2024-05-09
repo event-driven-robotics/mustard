@@ -37,7 +37,7 @@ from kivy.event import EventDispatcher
 
 from bimvee.visualisers.visualiserBoundingBoxes import VisualiserBoundingBoxes
 from bimvee.visualisers.visualiserEyeTracking import VisualiserEyeTracking
-import os
+import json
 
 
 class AnnotatorBase(EventDispatcher):
@@ -130,6 +130,15 @@ class EyeTrackingAnnotator(AnnotatorBase):
 
         self.visualizer.set_data(self.sort_by_ts(data_dict))
         self.annotating = True
+
+    def save(self, path, **kwargs):
+        data_dict = self.visualizer.get_data().copy()
+        data_dict['ts'] -= data_dict['tsOffset']
+        out_list = []
+        for i in range(len(data_dict['ts'])):
+            out_list.append({x: data_dict[x][i] for x in data_dict if hasattr(data_dict[x], '__len__')})
+        with open(path, 'w') as f:
+            json.dump(out_list, f)
 
     def update(self, mouse_position, modifiers):
         if self.annotating:
@@ -405,6 +414,8 @@ class Viewer(BoxLayout):
             if isinstance(v, VisualiserEyeTracking):
                 self.annotator = EyeTrackingAnnotator(v)
                 return
+            else:
+                tsOffset = v.get_data()['tsOffset']
         data_dict = {
             'eyeball_radius': np.array([]),
             'eyeball_x': np.array([]),
@@ -412,7 +423,8 @@ class Viewer(BoxLayout):
             'eyeball_phi': np.array([]),
             'eyeball_theta': np.array([]),
             'ts': np.array([]),
-            'orderAdded': np.array([])
+            'orderAdded': np.array([]),
+            'tsOffset' : tsOffset
         }
         viz = VisualiserEyeTracking(data=data_dict)
         self.settings['eyeTracking'] = viz.get_settings()
@@ -674,7 +686,13 @@ class Viewer(BoxLayout):
                 'radius': radius * self.get_aspect_ratio()[0]
             })
         if settings['show_xy_pointcloud']:
-            data_dict = self.annotator.visualizer.get_data()
+            viz_found = False 
+            for v in self.visualisers:
+                if isinstance(v, VisualiserEyeTracking):
+                    data_dict = v.get_data()
+                    viz_found = True
+            if not viz_found:
+                return
             eye_tracking_args['pointcloud'] = [self.img_to_window_coordinates(
                 y, x) for x, y in zip(data_dict['eyeball_x'], data_dict['eyeball_y'])]
 
