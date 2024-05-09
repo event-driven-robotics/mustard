@@ -240,25 +240,28 @@
                 text: 'Stop'
                 disabled: root.annotator is None
                 on_release: root.close_annotations()
-        ZoomableImage:
-            id: zoomable_image
-            do_rotation: False
-            auto_bring_to_front: False
-            scale_min: 0.5
-            scale_max: 10
-            clickable_area: (box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
-            transform_allowed: 'shift' in root.modifiers
-            on_bbox: root.crop_image(*self.clickable_area)
-            Image:
-                id: image
-                size: zoomable_image.size
-                allow_stretch: True
-                on_size: root.crop_image(*zoomable_image.clickable_area)
-                keep_ratio: True
-    Label:
-        size_hint: 1, 0.05
-        id: label_status
-        text: root.annotator.get_instructions() if root.annotator is not None else ''
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: 20
+            ZoomableImage:
+                id: zoomable_image
+                do_rotation: False
+                auto_bring_to_front: False
+                scale_min: 0.5
+                scale_max: 10
+                clickable_area: (box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
+                transform_allowed: 'shift' in root.modifiers
+                on_bbox: root.crop_image(*self.clickable_area)
+                Image:
+                    id: image
+                    size: zoomable_image.size
+                    allow_stretch: True
+                    on_size: root.crop_image(*zoomable_image.clickable_area)
+                    keep_ratio: True
+            Label:
+                size_hint: 1, 0.05
+                text_size: self.width, None
+                id: label_status
 
 <RootWidget>
     orientation:'horizontal'

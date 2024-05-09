@@ -32,13 +32,17 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.core.window import Window, Clock
 from kivy.graphics.transformation import Matrix
 from kivy.graphics.vertex_instructions import Rectangle
+from kivy.event import EventDispatcher
 
 from bimvee.visualisers.visualiserBoundingBoxes import VisualiserBoundingBoxes
 from bimvee.visualisers.visualiserEyeTracking import VisualiserEyeTracking
 import os
 
-class AnnotatorBase:
-    def __init__(self, visualizer) -> None:
+class AnnotatorBase(EventDispatcher):
+    instructions = StringProperty('')
+
+    def __init__(self, visualizer=None) -> None:
+        super().__init__()
         self.visualizer = visualizer
         self.current_time = None
         self.annotating = False
@@ -79,11 +83,15 @@ class AnnotatorBase:
     
     def stop_annotation(self):
         raise NotImplementedError
-    
-    def get_instructions(self):
-        return ''
-    
+
 class EyeTrackingAnnotator(AnnotatorBase):
+
+    def __init__(self, visualizer) -> None:
+        super().__init__(visualizer)
+        self.instructions = 'Annotating eyes. 1. click on eyeball center' + \
+                            '2. match the iris center 3. adjust size with alt+mouse\n' +\
+                            'Mouse: rotate, Ctrl+mouse: translate, Alt+mouse: resize'
+
     def start_annotation(self, current_time, mouse_pos):
         data_dict = self.visualizer.get_data()
         self.current_time = current_time
@@ -93,8 +101,8 @@ class EyeTrackingAnnotator(AnnotatorBase):
             self.initial_data = {x: data_dict[x][self.annotation_idx] for x in data_dict if hasattr(data_dict[x], '__len__')}
         except IndexError:
             data_dict['ts'] = np.append(data_dict['ts'], current_time)
-            data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], mouse_pos[0])
-            data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], mouse_pos[1])
+            data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], mouse_pos[1])
+            data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], mouse_pos[0])
             data_dict['eyeball_radius'] = np.append(data_dict['eyeball_radius'], 100)
             data_dict['eyeball_phi'] = np.append(data_dict['eyeball_phi'], 0)
             data_dict['eyeball_theta'] = np.append(data_dict['eyeball_theta'], 0)
@@ -106,33 +114,30 @@ class EyeTrackingAnnotator(AnnotatorBase):
             self.initial_data = {x: data_dict[x][-1] for x in data_dict if hasattr(data_dict[x], '__len__')}
 
         self.visualizer.set_data(data_dict)
-        self.uvr_only = False
         self.annotating = True
-
 
     def update(self, mouse_position, modifiers):
         if self.annotating:
             data_dict = self.visualizer.get_data()
-            if self.uvr_only:
+            if 'ctrl' in modifiers:
+                data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + (mouse_position[0] - self.initial_mouse_pos[0])
+                data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + (mouse_position[1] - self.initial_mouse_pos[1])
+            elif 'alt' in modifiers:
                 data_dict['eyeball_radius'][self.annotation_idx] = self.initial_data['eyeball_radius'] - (mouse_position[1] - self.initial_mouse_pos[1])
             else:
-                if 'ctrl' in modifiers:
-                    data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + (mouse_position[0] - self.initial_mouse_pos[0])
-                    data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + (mouse_position[1] - self.initial_mouse_pos[1])
-                elif 'alt' in modifiers:
-                    data_dict['eyeball_radius'][self.annotation_idx] = self.initial_data['eyeball_radius'] - (mouse_position[1] - self.initial_mouse_pos[1])
-                else:
-                    data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
-                    data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
+                data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
+                data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
                         
             self.visualizer.set_data(data_dict)
 
     def stop_annotation(self):
         self.annotating = False
-    
-    def get_instructions(self):
-        return 'Annotating Eyes'
+
 class BoundingBoxAnnotator(AnnotatorBase):
+
+    def __init__(self, visualizer) -> None:
+        super().__init__(visualizer)
+        self.instructions = 'Use num keys to change tag'
 
     def start_annotation(self, current_time, mouse_pos):
         data_dict = self.visualizer.get_data()
@@ -197,9 +202,6 @@ class BoundingBoxAnnotator(AnnotatorBase):
         except IndexError:
             pass
         self.annotating = False
-
-    def get_instructions(self):
-        return 'Use num keys to change tag'
 
 class BoundingBox(Widget):
     mouse_over = BooleanProperty(False)
@@ -313,6 +315,7 @@ class Viewer(BoxLayout):
     mouse_position = ListProperty([0, 0])
     modifiers = ListProperty([])
     annotator = ObjectProperty(None, allownone=True)
+    instructions = StringProperty('')
 
     def __init__(self, **kwargs):
         super(Viewer, self).__init__(**kwargs)
@@ -384,6 +387,8 @@ class Viewer(BoxLayout):
         self.settings['eyeTracking'] = viz.get_settings()
         self.visualisers.append(viz)
         self.annotator = EyeTrackingAnnotator(viz)
+        self.ids['label_status'].text = self.annotator.instructions
+        self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
         
     def undo(self):
         self.annotator.undo()
