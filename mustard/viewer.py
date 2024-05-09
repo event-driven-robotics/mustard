@@ -89,22 +89,41 @@ class EyeTrackingAnnotator(AnnotatorBase):
         self.current_time = current_time
         self.initial_mouse_pos = mouse_pos
         self.annotation_idx = np.searchsorted(data_dict['ts'], current_time)
-        self.initial_data = {x: data_dict[x][self.annotation_idx] for x in data_dict if hasattr(data_dict[x], '__len__')}
+        try:
+            self.initial_data = {x: data_dict[x][self.annotation_idx] for x in data_dict if hasattr(data_dict[x], '__len__')}
+        except IndexError:
+            data_dict['ts'] = np.append(data_dict['ts'], current_time)
+            data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], mouse_pos[0])
+            data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], mouse_pos[1])
+            data_dict['eyeball_radius'] = np.append(data_dict['eyeball_radius'], 100)
+            data_dict['eyeball_phi'] = np.append(data_dict['eyeball_phi'], 0)
+            data_dict['eyeball_theta'] = np.append(data_dict['eyeball_theta'], 0)
+            try:
+                last_added = np.max(data_dict['orderAdded']) + 1
+            except ValueError:
+                last_added = 0
+            data_dict['orderAdded'] = np.append(data_dict['orderAdded'], last_added)
+            self.initial_data = {x: data_dict[x][-1] for x in data_dict if hasattr(data_dict[x], '__len__')}
+
         self.visualizer.set_data(data_dict)
+        self.uvr_only = False
         self.annotating = True
 
 
     def update(self, mouse_position, modifiers):
         if self.annotating:
             data_dict = self.visualizer.get_data()
-            if 'ctrl' in modifiers:
-                data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + (mouse_position[0] - self.initial_mouse_pos[0])
-                data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + (mouse_position[1] - self.initial_mouse_pos[1])
-            elif 'alt' in modifiers:
+            if self.uvr_only:
                 data_dict['eyeball_radius'][self.annotation_idx] = self.initial_data['eyeball_radius'] - (mouse_position[1] - self.initial_mouse_pos[1])
             else:
-                data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
-                data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
+                if 'ctrl' in modifiers:
+                    data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + (mouse_position[0] - self.initial_mouse_pos[0])
+                    data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + (mouse_position[1] - self.initial_mouse_pos[1])
+                elif 'alt' in modifiers:
+                    data_dict['eyeball_radius'][self.annotation_idx] = self.initial_data['eyeball_radius'] - (mouse_position[1] - self.initial_mouse_pos[1])
+                else:
+                    data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
+                    data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
                         
             self.visualizer.set_data(data_dict)
 
@@ -353,18 +372,18 @@ class Viewer(BoxLayout):
                 self.annotator = EyeTrackingAnnotator(v)
                 return
         data_dict = {
+                    'eyeball_radius': np.array([]),
+                    'eyeball_x': np.array([]),
+                    'eyeball_y': np.array([]),
+                    'eyeball_phi': np.array([]),
+                    'eyeball_theta': np.array([]),
                     'ts': np.array([]),
-                    'minY': np.array([]),
-                    'minX': np.array([]),
-                    'maxY': np.array([]),
-                    'maxX': np.array([]),
-                    'label': np.array([]),
                     'orderAdded': np.array([])
                 }
         viz = VisualiserEyeTracking(data=data_dict)
         self.settings['eyeTracking'] = viz.get_settings()
         self.visualisers.append(viz)
-        self.annotator = BoundingBoxAnnotator(viz)
+        self.annotator = EyeTrackingAnnotator(viz)
         
     def undo(self):
         self.annotator.undo()
