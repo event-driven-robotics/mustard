@@ -62,6 +62,16 @@ class AnnotatorBase(EventDispatcher):
     def start_annotation(self, current_time, mouse_pos):
         raise NotImplementedError
 
+    def get_time_of_next_annotated_frame(self, current_time, backward=False):
+        try:
+            if backward:
+                next_idx = np.searchsorted(self.data_dict['ts'], current_time - 0.0001) - 1
+            else:
+                next_idx = np.searchsorted(self.data_dict['ts'], current_time + 0.0001) % len(self)
+            return float(self.data_dict['ts'][next_idx])
+        except IndexError:
+            return current_time
+
     def undo(self):
         data_dict = self.data_dict
         if self.last_added_annotation_idx != -1 and data_dict['orderAdded'][self.last_added_annotation_idx] != -1:

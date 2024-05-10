@@ -220,6 +220,14 @@
                 text: 'Stop'
                 disabled: root.annotator is None
                 on_release: root.close_annotations()
+            Button:
+                text: 'Next'
+                disabled: root.annotator is None
+                on_release: app.root.time_slider.value = root.annotator.get_time_of_next_annotated_frame(app.root.time_slider.value)
+            Button:
+                text: 'Previous'
+                disabled: root.annotator is None
+                on_release: app.root.time_slider.value = root.annotator.get_time_of_next_annotated_frame(app.root.time_slider.value, backward=True)
         BoxLayout:
             orientation: 'vertical'
             spacing: 20
@@ -246,6 +254,7 @@
 <RootWidget>
     orientation:'horizontal'
     data_controller: data_controller
+    time_slider: time_slider
     BoxLayout:
         orientation: 'vertical'
         size_hint: .15, 1
