@@ -45,7 +45,8 @@ class AnnotatorBase(EventDispatcher):
 
     def __init__(self, visualizer=None) -> None:
         super().__init__()
-        self.visualizer = visualizer
+        self.data_dict = visualizer.get_data()
+        self.data_type = visualizer.data_type
         self.current_time = None
         self.annotating = False
         self.label = 0
@@ -53,16 +54,16 @@ class AnnotatorBase(EventDispatcher):
         self.initial_mouse_pos = None
 
     def get_data_type(self):
-        return self.visualizer.data_type
+        return self.data_type
 
     def __len__(self):
-        return len(self.visualizer.get_data()['ts'])
+        return len(self.data_dict['ts'])
 
     def start_annotation(self, current_time, mouse_pos):
         raise NotImplementedError
 
     def undo(self):
-        data_dict = self.visualizer.get_data()
+        data_dict = self.data_dict
         if self.last_added_annotation_idx != -1 and data_dict['orderAdded'][self.last_added_annotation_idx] != -1:
             for d in data_dict:
                 try:
@@ -75,7 +76,6 @@ class AnnotatorBase(EventDispatcher):
                 self.last_added_annotation_idx = -1
         else:
             return
-        self.visualizer.set_data(data_dict)
 
     def save(self, path, **kwargs):
         raise NotImplementedError
@@ -104,7 +104,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
                             'Mouse: rotate, Ctrl+mouse: translate, Alt+mouse: resize'
 
     def start_annotation(self, current_time, mouse_pos):
-        data_dict = self.visualizer.get_data()
+        data_dict = self.data_dict
         self.current_time = current_time
         self.initial_mouse_pos = mouse_pos
         self.annotation_idx = np.searchsorted(data_dict['ts'], current_time)
@@ -128,11 +128,11 @@ class EyeTrackingAnnotator(AnnotatorBase):
             data_dict['orderAdded'] = np.append(data_dict['orderAdded'], last_added)
             self.initial_data = {x: data_dict[x][-1] for x in data_dict if hasattr(data_dict[x], '__len__')}
 
-        self.visualizer.set_data(self.sort_by_ts(data_dict))
+        self.sort_by_ts(data_dict)
         self.annotating = True
 
     def save(self, path, **kwargs):
-        data_dict = self.visualizer.get_data().copy()
+        data_dict = self.data_dict.copy()
         data_dict['ts'] -= data_dict['tsOffset']
         out_list = []
         for i in range(len(data_dict['ts'])):
@@ -142,7 +142,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
 
     def update(self, mouse_position, modifiers):
         if self.annotating:
-            data_dict = self.visualizer.get_data()
+            data_dict = self.data_dict
             if 'ctrl' in modifiers:
                 data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + \
                     (mouse_position[0] - self.initial_mouse_pos[0])
@@ -157,8 +157,6 @@ class EyeTrackingAnnotator(AnnotatorBase):
                 data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + \
                     np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
 
-            self.visualizer.set_data(data_dict)
-
     def stop_annotation(self):
         self.annotating = False
 
@@ -170,7 +168,7 @@ class BoundingBoxAnnotator(AnnotatorBase):
         self.instructions = 'Use num keys to change tag'
 
     def start_annotation(self, current_time, mouse_pos):
-        data_dict = self.visualizer.get_data()
+        data_dict = self.data_dict
         self.current_time = current_time
         self.initial_mouse_pos = mouse_pos
         data_dict['ts'] = np.append(data_dict['ts'], current_time)
@@ -190,11 +188,11 @@ class BoundingBoxAnnotator(AnnotatorBase):
         data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_annotation)
         self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
 
-        self.visualizer.set_data(self.sort_by_ts(data_dict))
+        self.sort_by_ts(data_dict)
         self.annotating = True
 
     def save(self, path, **kwargs):
-        data_dict = self.visualizer.get_data()
+        data_dict = self.data_dict
         viz = self.visualizer
         if kwargs.get('interpolate'):
             boxes = []
@@ -211,16 +209,15 @@ class BoundingBoxAnnotator(AnnotatorBase):
 
     def update(self, mouse_position, modifiers):
         if self.annotating:
-            data_dict = self.visualizer.get_data()
+            data_dict = self.data_dict
             data_dict['ts'][self.last_added_annotation_idx] = self.current_time
             data_dict['minY'][self.last_added_annotation_idx] = min(mouse_position[1], self.initial_mouse_pos[1])
             data_dict['maxY'][self.last_added_annotation_idx] = max(mouse_position[1], self.initial_mouse_pos[1])
             data_dict['minX'][self.last_added_annotation_idx] = min(mouse_position[0], self.initial_mouse_pos[0])
             data_dict['maxX'][self.last_added_annotation_idx] = max(mouse_position[0], self.initial_mouse_pos[0])
-            self.visualizer.set_data(data_dict)
 
     def stop_annotation(self):
-        data_dict = self.visualizer.get_data()
+        data_dict = self.data_dict
         try:
             if data_dict['minY'][-1] == data_dict['maxY'][-1] or data_dict['minX'][-1] == data_dict['maxX'][-1]:
                 self.undo()
