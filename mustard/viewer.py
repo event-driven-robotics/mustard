@@ -69,7 +69,7 @@ class AnnotatorBase(EventDispatcher):
                 try:
                     data_dict[d] = np.delete(data_dict[d], self.last_added_annotation_idx)
                 except IndexError:
-                    return
+                    pass
             try:
                 self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
             except ValueError:
@@ -128,6 +128,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
             data_dict['orderAdded'] = np.append(data_dict['orderAdded'], last_added)
             self.initial_data = {x: data_dict[x][-1] for x in data_dict if hasattr(data_dict[x], '__len__')}
 
+        self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
         self.sort_by_ts(data_dict)
         self.annotating = True
 
