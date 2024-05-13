@@ -20,305 +20,25 @@ a visualiser which is responsible for the data management and retrieval.
 import numpy as np
 import re
 from kivy.graphics.texture import Texture
-from kivy.uix.widget import Widget
 from kivy.uix.slider import Slider
-from kivy.uix.scatter import Scatter
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
-from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictProperty, NumericProperty, ObjectProperty
+from kivy.properties import BooleanProperty, StringProperty, ListProperty, DictProperty, ObjectProperty
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
-from kivy.core.window import Window, Clock
-from kivy.graphics.transformation import Matrix
+from kivy.core.window import Window
 from kivy.graphics.vertex_instructions import Rectangle
-from kivy.graphics import Color, Ellipse, Line
-from kivy.event import EventDispatcher
+from kivy.graphics.transformation import Matrix
+from kivy.core.window import Clock
+from kivy.uix.scatter import Scatter
 
 from bimvee.visualisers.visualiserBoundingBoxes import VisualiserBoundingBoxes
 from bimvee.visualisers.visualiserEyeTracking import VisualiserEyeTracking
-import json
 
-
-class AnnotatorBase(EventDispatcher):
-    instructions = StringProperty('')
-
-    def __init__(self, visualizer=None) -> None:
-        super().__init__()
-        self.data_dict = visualizer.get_data()
-        self.data_type = visualizer.data_type
-        self.current_time = None
-        self.annotating = False
-        self.label = 0
-        self.last_added_annotation_idx = None
-        self.initial_mouse_pos = None
-
-    def get_data_type(self):
-        return self.data_type
-
-    def __len__(self):
-        return len(self.data_dict['ts'])
-
-    def start_annotation(self, current_time, mouse_pos):
-        raise NotImplementedError
-
-    def get_time_of_next_annotated_frame(self, current_time, backward=False):
-        try:
-            if backward:
-                next_idx = np.searchsorted(self.data_dict['ts'], current_time - 0.0001) - 1
-            else:
-                next_idx = np.searchsorted(self.data_dict['ts'], current_time + 0.0001) % len(self)
-            return float(self.data_dict['ts'][next_idx])
-        except IndexError:
-            return current_time
-
-    def undo(self):
-        data_dict = self.data_dict
-        if self.last_added_annotation_idx != -1 and data_dict['orderAdded'][self.last_added_annotation_idx] != -1:
-            for d in data_dict:
-                try:
-                    data_dict[d] = np.delete(data_dict[d], self.last_added_annotation_idx)
-                except IndexError:
-                    pass
-            try:
-                self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
-            except ValueError:
-                self.last_added_annotation_idx = -1
-        else:
-            return
-
-    def save(self, path, **kwargs):
-        raise NotImplementedError
-
-    def update(self, mouse_position, modifiers):
-        raise NotImplementedError
-
-    def stop_annotation(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def sort_by_ts(data_dict):
-        argsort = np.argsort(data_dict['ts'])
-        for d in data_dict:
-            if hasattr(data_dict[d], '__len__'):
-                data_dict[d] = data_dict[d][argsort]
-        return data_dict
-
-
-class EyeTrackingAnnotator(AnnotatorBase):
-
-    def __init__(self, visualizer) -> None:
-        super().__init__(visualizer)
-        self.instructions = 'Annotating eyes. 1. click on eyeball center' + \
-                            '2. match the iris center 3. adjust size with alt+mouse\n' +\
-                            'Mouse: rotate, Ctrl+mouse: translate, Alt+mouse: resize'
-
-    def start_annotation(self, current_time, mouse_pos):
-        data_dict = self.data_dict
-        self.current_time = current_time
-        self.initial_mouse_pos = mouse_pos
-        self.annotation_idx = np.searchsorted(data_dict['ts'], current_time)
-        try:
-            if abs(data_dict['ts'][self.annotation_idx] - current_time) > 0.03:
-                raise IndexError
-            self.initial_data = {x: data_dict[x][self.annotation_idx]
-                                 for x in data_dict if hasattr(data_dict[x], '__len__')}
-        except IndexError:
-            data_dict['ts'] = np.append(data_dict['ts'], current_time)
-            data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], mouse_pos[1])
-            data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], mouse_pos[0])
-            data_dict['eyeball_radius'] = np.append(data_dict['eyeball_radius'], np.mean(
-                data_dict['eyeball_radius']) if len(data_dict['eyeball_radius']) else 100)
-            data_dict['eyeball_phi'] = np.append(data_dict['eyeball_phi'], 0)
-            data_dict['eyeball_theta'] = np.append(data_dict['eyeball_theta'], 0)
-            try:
-                last_added = np.max(data_dict['orderAdded']) + 1
-            except ValueError:
-                last_added = 0
-            data_dict['orderAdded'] = np.append(data_dict['orderAdded'], last_added)
-            self.initial_data = {x: data_dict[x][-1] for x in data_dict if hasattr(data_dict[x], '__len__')}
-
-        self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
-        self.sort_by_ts(data_dict)
-        self.annotating = True
-
-    def save(self, path, **kwargs):
-        data_dict = self.data_dict.copy()
-        data_dict['ts'] -= data_dict['tsOffset']
-        out_list = []
-        for i in range(len(data_dict['ts'])):
-            out_list.append({x: data_dict[x][i] for x in data_dict if hasattr(data_dict[x], '__len__')})
-        with open(path, 'w') as f:
-            json.dump(out_list, f)
-
-    def update(self, mouse_position, modifiers):
-        if self.annotating:
-            data_dict = self.data_dict
-            if 'ctrl' in modifiers:
-                data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + \
-                    (mouse_position[0] - self.initial_mouse_pos[0])
-                data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + \
-                    (mouse_position[1] - self.initial_mouse_pos[1])
-            elif 'alt' in modifiers:
-                data_dict['eyeball_radius'][self.annotation_idx] = self.initial_data['eyeball_radius'] - \
-                    (mouse_position[1] - self.initial_mouse_pos[1])
-            else:
-                data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - \
-                    np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
-                data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + \
-                    np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
-
-    def stop_annotation(self):
-        self.annotating = False
-
-
-class BoundingBoxAnnotator(AnnotatorBase):
-
-    def __init__(self, visualizer) -> None:
-        super().__init__(visualizer)
-        self.instructions = 'Use num keys to change tag'
-
-    def start_annotation(self, current_time, mouse_pos):
-        data_dict = self.data_dict
-        self.current_time = current_time
-        self.initial_mouse_pos = mouse_pos
-        data_dict['ts'] = np.append(data_dict['ts'], current_time)
-        data_dict['minY'] = np.append(data_dict['minY'], mouse_pos[1])
-        data_dict['minX'] = np.append(data_dict['minX'], mouse_pos[0])
-        data_dict['maxY'] = np.append(data_dict['maxY'], mouse_pos[1])
-        data_dict['maxX'] = np.append(data_dict['maxX'], mouse_pos[0])
-        data_dict['label'] = np.append(data_dict['label'], self.label)
-        try:
-            added_annotation = data_dict['orderAdded'].max() + 1
-        except ValueError:
-            added_annotation = 0
-        except KeyError:
-            data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
-            added_annotation = 0
-
-        data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_annotation)
-        self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
-
-        self.sort_by_ts(data_dict)
-        self.annotating = True
-
-    def save(self, path, **kwargs):
-        data_dict = self.data_dict
-        viz = self.visualizer
-        if kwargs.get('interpolate'):
-            boxes = []
-            # TODO parametrize sample rate when saving interpolated
-            for t in np.arange(0, data_dict['ts'][-1] + 0.01, 0.01):
-                boxes_at_time = viz.get_frame(t, 0.01, **kwargs)
-                if boxes_at_time is not None and len(boxes_at_time):
-                    for b in boxes_at_time:
-                        boxes.append(np.concatenate(([t], b)))
-        else:
-            boxes = np.column_stack((data_dict['ts'], data_dict['minY'], data_dict['minX'], data_dict['maxY'],
-                                     data_dict['maxX'], data_dict['label']))
-        np.savetxt(path, boxes, fmt='%f')
-
-    def update(self, mouse_position, modifiers):
-        if self.annotating:
-            data_dict = self.data_dict
-            data_dict['ts'][self.last_added_annotation_idx] = self.current_time
-            data_dict['minY'][self.last_added_annotation_idx] = min(mouse_position[1], self.initial_mouse_pos[1])
-            data_dict['maxY'][self.last_added_annotation_idx] = max(mouse_position[1], self.initial_mouse_pos[1])
-            data_dict['minX'][self.last_added_annotation_idx] = min(mouse_position[0], self.initial_mouse_pos[0])
-            data_dict['maxX'][self.last_added_annotation_idx] = max(mouse_position[0], self.initial_mouse_pos[0])
-
-    def stop_annotation(self):
-        data_dict = self.data_dict
-        try:
-            if data_dict['minY'][-1] == data_dict['maxY'][-1] or data_dict['minX'][-1] == data_dict['maxX'][-1]:
-                self.undo()
-        except IndexError:
-            pass
-        self.annotating = False
-
-
-class BoundingBox(Widget):
-    mouse_over = BooleanProperty(False)
-
-    def __init__(self, bb_color, x, y, width, height, **kwargs):
-        super(BoundingBox, self).__init__(**kwargs)
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.bb_color = bb_color
-        Window.bind(mouse_pos=self.on_mouse_pos)
-
-    def on_mouse_pos(self, window, pos):
-        win_coords = self.to_window(*self.pos)
-        self.mouse_over = win_coords[0] < pos[0] < win_coords[0] + self.size[0] and\
-            win_coords[1] < pos[1] < win_coords[1] + self.size[1]
-
-
-class EyeTracker(Widget):
-    mouse_over = BooleanProperty(False)
-    iris_x_center = NumericProperty(None)
-    iris_y_center = NumericProperty(None)
-    gaze_line_x = NumericProperty(None)
-    gaze_line_y = NumericProperty(None)
-    center_x = NumericProperty(None)
-    center_y = NumericProperty(None)
-    ellipse_points = ListProperty()
-
-    def __init__(self,
-                 phi=None,
-                 theta=None,
-                 center_x=None,
-                 center_y=None,
-                 radius=None,
-                 pointcloud=None,
-                 **kwargs):
-        super(EyeTracker, self).__init__(**kwargs)
-
-        if phi is not None:
-            r = 0.5
-            c = np.sqrt(1 - r ** 2)
-
-            self.ellipse_points = []
-            for alpha in np.arange(-np.pi, np.pi, np.pi/180):
-                xhat = r*np.cos(alpha)
-                yhat = r*np.sin(alpha)
-                x = radius*(xhat*np.cos(phi)+c*np.sin(phi)) + center_x
-                y = radius*((xhat*np.sin(phi)-c*np.cos(phi))*np.sin(theta)+yhat*np.cos(theta)) + center_y
-                self.ellipse_points.append(x)
-                self.ellipse_points.append(y)
-
-            self.iris_x_center = int(radius * (c*np.sin(phi)) + center_x)
-            self.iris_y_center = int(radius * (c*(-np.sin(theta)*np.cos(phi))) + center_y)
-            self.gaze_line_x = int(radius * 1.5 * (c*np.sin(phi)) + center_x)
-            self.gaze_line_y = int(radius * 1.5 * (c*(-np.sin(theta)*np.cos(phi))) + center_y)
-            self.center_x = int(center_x)
-            self.center_y = int(center_y)
-            with self.canvas:
-                Color(1, 0, 0, 1)
-                Line(points=self.ellipse_points)
-                Color(0, 1, 0, 1)
-                Ellipse(pos=(self.iris_x_center - 3, self.iris_y_center - 3), size=(6, 6))
-                Ellipse(pos=(self.center_x - 3, self.center_y - 3), size=(6, 6))
-                Color(0, 0, 1, 1)
-                Line(points=(self.center_x, self.center_y, self.gaze_line_x, self.gaze_line_y))
-        if pointcloud is not None:
-            with self.canvas:
-                Color(0.5, 0.5, 0.5, 0.5)
-                for x, y in pointcloud:
-                    Ellipse(pos=(x - 3, y - 3), size=(6, 6))
-
-
-class LabeledBoundingBox(BoundingBox):
-    obj_label = StringProperty('')
-
-    def __init__(self, bb_color, x, y, width, height, label, **kwargs):
-        super(LabeledBoundingBox, self).__init__(bb_color, x, y, width, height, **kwargs)
-        try:
-            self.obj_label = '{:d}'.format(int(label))
-        except ValueError:
-            self.obj_label = label
-
+from .BoundingBox import BoundingBox, LabeledBoundingBox
+from .EyeTracker import EyeTracker
+from .EyeTrackingAnnotator import EyeTrackingAnnotator
 
 class ZoomableImage(Scatter):
 
@@ -350,7 +70,6 @@ class ZoomableImage(Scatter):
             return False
         else:
             return super(ZoomableImage, self).on_touch_down(touch)
-
 
 class Viewer(BoxLayout):
     data = DictProperty(force_dispatch=True)
@@ -432,7 +151,7 @@ class Viewer(BoxLayout):
             'eyeball_theta': np.array([]),
             'ts': np.array([]),
             'orderAdded': np.array([]),
-            'tsOffset' : tsOffset
+            'tsOffset': tsOffset
         }
         viz = VisualiserEyeTracking(data=data_dict)
         self.settings['eyeTracking'] = viz.get_settings()
@@ -694,7 +413,7 @@ class Viewer(BoxLayout):
                 'radius': radius * self.get_aspect_ratio()[0]
             })
         if settings['show_xy_pointcloud']:
-            viz_found = False 
+            viz_found = False
             for v in self.visualisers:
                 if isinstance(v, VisualiserEyeTracking):
                     data_dict = v.get_data()

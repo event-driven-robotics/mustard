@@ -17,7 +17,7 @@ Use kivy to create an app which can receive data dicts as imported by bimvee
 importAe, and allow synchronised playback for each of the contained channels and datatypes. 
 """
 # standard imports
-from mustard.viewer import Viewer
+from .viewer.Viewer import Viewer
 from kivy.core.window import Window
 from kivy.properties import DictProperty
 from kivy.properties import StringProperty, NumericProperty
