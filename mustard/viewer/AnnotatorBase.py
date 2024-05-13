@@ -3,6 +3,11 @@ from kivy.event import EventDispatcher
 from kivy.properties import StringProperty
 
 
+def annotatorFactory(type, initial_data=None):
+    
+    return
+
+
 class AnnotatorBase(EventDispatcher):
     instructions = StringProperty('')
 

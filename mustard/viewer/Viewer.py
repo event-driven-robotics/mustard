@@ -39,6 +39,7 @@ from bimvee.visualisers.visualiserEyeTracking import VisualiserEyeTracking
 from .BoundingBox import BoundingBox, LabeledBoundingBox
 from .EyeTracker import EyeTracker
 from .EyeTrackingAnnotator import EyeTrackingAnnotator
+from .BoundingBoxAnnotator import BoundingBoxAnnotator
 
 class ZoomableImage(Scatter):
 
@@ -136,27 +137,51 @@ class Viewer(BoxLayout):
             self.mouse_position[1] = int(self.cropped_region[1])
             self.mouse_on_image = False
 
-    def init_annotation(self):
-        for v in self.visualisers:
-            if isinstance(v, VisualiserEyeTracking):
-                self.annotator = EyeTrackingAnnotator(v)
-                return
-            else:
-                tsOffset = v.get_data()['tsOffset']
-        data_dict = {
-            'eyeball_radius': np.array([]),
-            'eyeball_x': np.array([]),
-            'eyeball_y': np.array([]),
-            'eyeball_phi': np.array([]),
-            'eyeball_theta': np.array([]),
-            'ts': np.array([]),
-            'orderAdded': np.array([]),
-            'tsOffset': tsOffset
-        }
-        viz = VisualiserEyeTracking(data=data_dict)
-        self.settings['eyeTracking'] = viz.get_settings()
-        self.visualisers.append(viz)
-        self.annotator = EyeTrackingAnnotator(viz)
+    def init_annotation(self, type='boxes'):
+        type = str.lower(type)
+
+        if type == 'boxes':
+            for v in self.visualisers:
+                if isinstance(v, VisualiserBoundingBoxes):
+                    self.annotator = BoundingBoxAnnotator(v)
+                    return
+            data_dict = {
+                        'ts': np.array([]),
+                        'minY': np.array([]),
+                        'minX': np.array([]),
+                        'maxY': np.array([]),
+                        'maxX': np.array([]),
+                        'label': np.array([]),
+                        'orderAdded': np.array([])
+                    }
+            viz = VisualiserBoundingBoxes(data=data_dict)
+            self.settings['boundingBoxes'] = viz.get_settings()
+            self.visualisers.append(viz)
+            self.annotator = BoundingBoxAnnotator(viz)
+        elif type == 'eyes':
+            for v in self.visualisers:
+                if isinstance(v, VisualiserEyeTracking):
+                    self.annotator = EyeTrackingAnnotator(v)
+                    return
+                else:
+                    try:
+                        tsOffset = v.get_data()['tsOffset']
+                    except KeyError:
+                        pass
+            data_dict = {
+                'eyeball_radius': np.array([]),
+                'eyeball_x': np.array([]),
+                'eyeball_y': np.array([]),
+                'eyeball_phi': np.array([]),
+                'eyeball_theta': np.array([]),
+                'ts': np.array([]),
+                'orderAdded': np.array([]),
+                'tsOffset': tsOffset
+            }
+            viz = VisualiserEyeTracking(data=data_dict)
+            self.settings['eyeTracking'] = viz.get_settings()
+            self.visualisers.append(viz)
+            self.annotator = EyeTrackingAnnotator(viz)
         self.ids['label_status'].text = self.annotator.instructions
         self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
 

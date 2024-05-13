@@ -1,6 +1,4 @@
-from mustard.AnnotatorBase import AnnotatorBase
-
-
+from .AnnotatorBase import AnnotatorBase
 import numpy as np
 
 
