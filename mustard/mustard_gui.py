@@ -31,12 +31,14 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.clock import Clock
 from kivy.uix.slider import Slider
 from kivy.app import App
+from kivy.config import Config
+from kivy.base import EventLoop
+from kivy.input.providers.mouse import MouseMotionEventProvider
 import numpy as np
 import sys
 import os
 import json
 from textwrap import wrap
-from kivy.config import Config
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 os.environ['KIVY_NO_ARGS'] = 'T'
@@ -111,6 +113,7 @@ class SaveDialog(FloatLayout):
     cancel = ObjectProperty(None)
     save_path = StringProperty(None)
 
+
 class DictEditor(GridLayout):
     dict = DictProperty(None)
 
@@ -177,7 +180,7 @@ class DataController(GridLayout):
                 self.cache_json = json.load(f)
         except FileNotFoundError:
             with open(self.tmp_cache_path, 'w+') as f:
-                self.cache_json = {"LastLoadedPath" : "~"}
+                self.cache_json = {"LastLoadedPath": "~"}
                 json.dump(self.cache_json, f)
 
     def update_children(self):
@@ -211,7 +214,7 @@ class DataController(GridLayout):
             else:
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
                 continue
-            
+
             settings[data_type] = visualiser.get_settings()
             visualisers.append(visualiser)
         if visualisers:
@@ -317,7 +320,7 @@ class DataController(GridLayout):
 
         self.update_cache_element("LastLoadedPath", self.filePathOrName)
         try:
-            self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template) 
+            self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template)
             # TODO Handle rosbag case with template dialog
         except Exception as e:
             self.show_warning_popup('\n'.join(wrap(str(e), width=40)))
@@ -393,6 +396,14 @@ class RootWidget(BoxLayout):
         super(RootWidget, self).__init__(**kwargs)
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
         self._keyboard.bind(on_key_down=self._on_keyboard_down, on_key_up=self._on_keyboard_up)
+        Clock.schedule_once(self.init_mouse_provider, 1)
+
+    # Little hack to enable alt+drag for
+    def init_mouse_provider(self, a):
+        for provider in EventLoop.input_providers:
+            if isinstance(provider, MouseMotionEventProvider):
+                provider.start()
+                break
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         if keycode[1] == 'right':
@@ -411,19 +422,21 @@ class RootWidget(BoxLayout):
         return True
 
     def _on_keyboard_up(self, keyboard, keycode):
-        for viewer in self.data_controller.children:
-            if keycode[1].endswith('ctrl'):
-                viewer.modifiers.remove('ctrl')
-            elif keycode[1].endswith('shift'):
-                viewer.modifiers.remove('shift')
-            elif keycode[1].startswith('alt'):
-                viewer.modifiers.remove('alt')
-            # Return True to accept the key. Otherwise, it will be used by the system.
+        try:
+            for viewer in self.data_controller.children:
+                if keycode[1].endswith('ctrl'):
+                    viewer.modifiers.remove('ctrl')
+                elif keycode[1].endswith('shift'):
+                    viewer.modifiers.remove('shift')
+                elif keycode[1].startswith('alt'):
+                    viewer.modifiers.remove('alt')
+                # Return True to accept the key. Otherwise, it will be used by the system.
+        except ValueError:
+            pass
         return True
 
     def _keyboard_closed(self):
-        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
-        del self._keyboard
+        return
 
 
 class Mustard(App):
