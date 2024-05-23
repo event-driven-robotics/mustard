@@ -99,7 +99,7 @@ class AnnotatorBase(EventDispatcher):
         raise NotImplementedError
 
     def stop_annotation(self):
-        pass
+        self.annotating = False
 
     @staticmethod
     def sort_by_ts(data_dict):

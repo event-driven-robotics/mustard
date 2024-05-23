@@ -34,6 +34,8 @@ class BoundingBoxAnnotator(AnnotatorBase):
         np.savetxt(path, boxes, fmt='%f')
 
     def update(self, mouse_position, modifiers):
+        if not self.annotating:
+            return
         data_dict = self.data_dict
         data_dict['ts'][self.last_added_annotation_idx] = self.current_time
         data_dict['minY'][self.last_added_annotation_idx] = min(mouse_position[1], self.initial_mouse_pos[1])
