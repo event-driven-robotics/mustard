@@ -1,7 +1,7 @@
 from .AnnotatorBase import AnnotatorBase
 import numpy as np
 import json
-
+from copy import deepcopy
 
 class EyeTrackingAnnotator(AnnotatorBase):
 
@@ -23,7 +23,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
         data_dict['eyeball_theta'] = np.append(data_dict['eyeball_theta'], 0)
 
     def save(self, path, **kwargs):
-        data_dict = self.data_dict.copy()
+        data_dict = deepcopy(self.data_dict)
         data_dict['ts'] -= data_dict['tsOffset']
         out_list = []
         for i in range(len(data_dict['ts'])):
@@ -47,3 +47,6 @@ class EyeTrackingAnnotator(AnnotatorBase):
             data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + \
                 np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
 
+    def stop_annotation(self):
+        self.save('tmp_eyes.json')
+        return super().stop_annotation()

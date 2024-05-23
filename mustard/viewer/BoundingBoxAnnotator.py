@@ -20,7 +20,7 @@ class BoundingBoxAnnotator(AnnotatorBase):
     def save(self, path, **kwargs):
         data_dict = self.data_dict
         viz = self.visualizer
-        if kwargs.get('interpolate'):
+        if kwargs.get('interpolate', False):
             boxes = []
             # TODO parametrize sample rate when saving interpolated
             for t in np.arange(0, data_dict['ts'][-1] + 0.01, 0.01):
@@ -48,3 +48,4 @@ class BoundingBoxAnnotator(AnnotatorBase):
                 self.undo()
         except IndexError:
             pass
+        self.save('tmp_boxes.csv')
