@@ -152,7 +152,6 @@ class Viewer(BoxLayout):
                         'maxY': np.array([]),
                         'maxX': np.array([]),
                         'label': np.array([]),
-                        'orderAdded': np.array([])
                     }
             viz = VisualiserBoundingBoxes(data=data_dict)
             self.settings['boundingBoxes'] = viz.get_settings()
@@ -175,7 +174,6 @@ class Viewer(BoxLayout):
                 'eyeball_phi': np.array([]),
                 'eyeball_theta': np.array([]),
                 'ts': np.array([]),
-                'orderAdded': np.array([]),
                 'tsOffset': tsOffset
             }
             viz = VisualiserEyeTracking(data=data_dict)
@@ -188,9 +186,13 @@ class Viewer(BoxLayout):
     def undo(self):
         self.annotator.undo()
         self.get_frame(self.current_time, self.current_time_window)
+
+    def redo(self):
+        self.annotator.redo()
+        self.get_frame(self.current_time, self.current_time_window)
         
     def delete(self):
-        self.annotator.delete(self.current_time)
+        self.annotator.delete_by_time(self.current_time)
         self.get_frame(self.current_time, self.current_time_window)
 
     def save_annotations(self, path):
@@ -206,6 +208,8 @@ class Viewer(BoxLayout):
         return False
 
     def on_touch_up(self, touch):
+        if not self.mouse_on_image:
+            return False
         if self.annotator is not None:
             self.annotator.stop_annotation()
             self.get_frame(self.current_time, self.current_time_window)

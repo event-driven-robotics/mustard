@@ -223,7 +223,11 @@
             Button:
                 text: 'Undo'
                 disabled: root.annotator is None
-                on_release: root.undo()            
+                on_release: root.undo()    
+            Button:
+                text: 'Redo'
+                disabled: root.annotator is None
+                on_release: root.redo()            
             Button:
                 text: 'Delete'
                 disabled: root.annotator is None

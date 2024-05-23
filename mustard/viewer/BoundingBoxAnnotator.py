@@ -8,29 +8,14 @@ class BoundingBoxAnnotator(AnnotatorBase):
         super().__init__(visualizer)
         self.instructions = 'Use num keys to change tag'
 
-    def start_annotation(self, current_time, mouse_pos):
+    def create_new_data_entry(self, current_time, mouse_pos):
         data_dict = self.data_dict
-        self.current_time = current_time
-        self.initial_mouse_pos = mouse_pos
         data_dict['ts'] = np.append(data_dict['ts'], current_time)
         data_dict['minY'] = np.append(data_dict['minY'], mouse_pos[1])
         data_dict['minX'] = np.append(data_dict['minX'], mouse_pos[0])
         data_dict['maxY'] = np.append(data_dict['maxY'], mouse_pos[1])
         data_dict['maxX'] = np.append(data_dict['maxX'], mouse_pos[0])
         data_dict['label'] = np.append(data_dict['label'], self.label)
-        try:
-            added_annotation = data_dict['orderAdded'].max() + 1
-        except ValueError:
-            added_annotation = 0
-        except KeyError:
-            data_dict['orderAdded'] = np.full(len(data_dict['ts']) - 1, -1)
-            added_annotation = 0
-
-        data_dict['orderAdded'] = np.append(data_dict['orderAdded'], added_annotation)
-        self.last_added_annotation_idx = np.argmax(data_dict['orderAdded'])
-
-        self.sort_by_ts(data_dict)
-        self.annotating = True
 
     def save(self, path, **kwargs):
         data_dict = self.data_dict
@@ -49,13 +34,12 @@ class BoundingBoxAnnotator(AnnotatorBase):
         np.savetxt(path, boxes, fmt='%f')
 
     def update(self, mouse_position, modifiers):
-        if self.annotating:
-            data_dict = self.data_dict
-            data_dict['ts'][self.last_added_annotation_idx] = self.current_time
-            data_dict['minY'][self.last_added_annotation_idx] = min(mouse_position[1], self.initial_mouse_pos[1])
-            data_dict['maxY'][self.last_added_annotation_idx] = max(mouse_position[1], self.initial_mouse_pos[1])
-            data_dict['minX'][self.last_added_annotation_idx] = min(mouse_position[0], self.initial_mouse_pos[0])
-            data_dict['maxX'][self.last_added_annotation_idx] = max(mouse_position[0], self.initial_mouse_pos[0])
+        data_dict = self.data_dict
+        data_dict['ts'][self.last_added_annotation_idx] = self.current_time
+        data_dict['minY'][self.last_added_annotation_idx] = min(mouse_position[1], self.initial_mouse_pos[1])
+        data_dict['maxY'][self.last_added_annotation_idx] = max(mouse_position[1], self.initial_mouse_pos[1])
+        data_dict['minX'][self.last_added_annotation_idx] = min(mouse_position[0], self.initial_mouse_pos[0])
+        data_dict['maxX'][self.last_added_annotation_idx] = max(mouse_position[0], self.initial_mouse_pos[0])
 
     def stop_annotation(self):
         data_dict = self.data_dict
@@ -64,4 +48,3 @@ class BoundingBoxAnnotator(AnnotatorBase):
                 self.undo()
         except IndexError:
             pass
-        self.annotating = False
