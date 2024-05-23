@@ -53,6 +53,6 @@ class EyeTracker(Widget):
                 Line(points=(self.center_x, self.center_y, self.gaze_line_x, self.gaze_line_y))
         if pointcloud is not None:
             with self.canvas:
-                Color(0.5, 0.5, 0.5, 0.5)
+                Color(0.57, 0.47, 0.91, 0.5)
                 for x, y in pointcloud:
                     Ellipse(pos=(x - 3, y - 3), size=(6, 6))

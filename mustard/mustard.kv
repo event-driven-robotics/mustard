@@ -209,17 +209,25 @@
                 text: "Flip horiz"
                 on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
                 on_release:  self.source='graphics/flip_horiz.png';
-            Spinner:
-                id: annotation_spinner
-                text: 'Select annotation type'
-                values: 'Boxes', 'Eyes'
+            BoxLayout:
+                orientation: 'horizontal'
+                Label:
+                    text: 'Annotation type: '
+                Spinner:
+                    id: annotation_spinner
+                    text: 'Eyes'
+                    values: 'Boxes', 'Eyes'
             Button:
                 text: 'Annotate' if root.annotator is None else 'Save'
                 on_release: app.root.data_controller.show_save(save_fun=root.save_annotations) if root.annotator is not None else root.init_annotation(annotation_spinner.text)
             Button:
                 text: 'Undo'
                 disabled: root.annotator is None
-                on_release: root.undo()
+                on_release: root.undo()            
+            Button:
+                text: 'Delete'
+                disabled: root.annotator is None
+                on_release: root.delete()
             Button:
                 text: 'Stop'
                 disabled: root.annotator is None

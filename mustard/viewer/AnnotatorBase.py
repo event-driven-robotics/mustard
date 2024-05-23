@@ -55,6 +55,17 @@ class AnnotatorBase(EventDispatcher):
         else:
             return
 
+    def delete(self, time):
+        data_dict = self.data_dict
+        idx = np.searchsorted(data_dict['ts'], time)
+        if abs(data_dict['ts'][idx] - time) > 0.03:
+            return
+        for d in data_dict:
+            try:
+                data_dict[d] = np.delete(data_dict[d], idx)
+            except IndexError:
+                pass
+
     def save(self, path, **kwargs):
         raise NotImplementedError
 
