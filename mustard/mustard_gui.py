@@ -257,9 +257,9 @@ class DataController(GridLayout):
                     print('    ' * recursionDepth + 'Ignoring that key ...')
 
     def on_data_dict(self, instance, value):
-        while len(self.children) > 0:
-            self.remove_widget(self.children[0])
-            print('Removed an old viewer; num remaining viewers: ' + str(len(self.children)))
+        for child in self.children:
+            child.close()
+        self.clear_widgets()
         if (self.data_dict is None) or not self.data_dict:
             # When using ntupleviz programmatically, pass an empty dict or None
             # to allow the container to be passed again once updated

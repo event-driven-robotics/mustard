@@ -202,6 +202,8 @@ class Viewer(BoxLayout):
         self.annotator = None
 
     def on_touch_move(self, touch):
+        print(self)
+
         if self.annotator is not None:
             self.annotator.update(self.mouse_position, self.modifiers)
             self.get_frame(self.current_time, self.current_time_window)
@@ -508,3 +510,6 @@ class Viewer(BoxLayout):
                            crop_bl_y * h_ratio + self.image.center_y - image_height / 2),
                       size=(crop_width * w_ratio, crop_height * h_ratio))
         self.on_data(None, None)
+
+    def close(self):
+        Window.unbind(mouse_pos=self.on_mouse_pos)

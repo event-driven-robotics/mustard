@@ -27,6 +27,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
 
     def save(self, path, **kwargs):
         data_dict = deepcopy(self.data_dict)
+        print(data_dict['tsOffset'])
         data_dict['ts'] -= data_dict['tsOffset']
         out_list = []
         for i in range(len(data_dict['ts'])):
