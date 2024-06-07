@@ -4,16 +4,17 @@ import json
 from copy import deepcopy
 from matplotlib import colormaps
 from matplotlib.colors import rgb2hex
+
+
 class EyeTrackingAnnotator(AnnotatorBase):
 
     def __init__(self, visualizer) -> None:
-        super().__init__(visualizer)
         self.base_instructions = 'Annotating eyes. 1. click on eyeball center' + \
-                            '2. match the iris center 3. adjust size with alt+mouse\n' +\
-                            'Mouse: rotate, Ctrl+mouse: translate, Alt+mouse: resize'
+            '2. match the iris center 3. adjust size with alt+mouse\n' +\
+            'Mouse: rotate, Ctrl+mouse: translate, Alt+mouse: resize'
         self.instructions = self.base_instructions
         self.cm = colormaps.get_cmap('RdYlGn')
-
+        super().__init__(visualizer)
 
     def create_new_data_entry(self, current_time, mouse_pos):
         data_dict = self.data_dict
@@ -21,13 +22,12 @@ class EyeTrackingAnnotator(AnnotatorBase):
         data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], mouse_pos[1])
         data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], mouse_pos[0])
         data_dict['eyeball_radius'] = np.append(data_dict['eyeball_radius'], np.mean(
-                data_dict['eyeball_radius']) if len(data_dict['eyeball_radius']) else 100)
+            data_dict['eyeball_radius']) if len(data_dict['eyeball_radius']) else 100)
         data_dict['eyeball_phi'] = np.append(data_dict['eyeball_phi'], 0)
         data_dict['eyeball_theta'] = np.append(data_dict['eyeball_theta'], 0)
 
     def save(self, path, **kwargs):
-        data_dict = deepcopy(self.data_dict)
-        print(data_dict['tsOffset'])
+        data_dict = deepcopy(dict(self.data_dict))
         data_dict['ts'] -= data_dict['tsOffset']
         out_list = []
         for i in range(len(data_dict['ts'])):
@@ -36,7 +36,8 @@ class EyeTrackingAnnotator(AnnotatorBase):
             json.dump(out_list, f)
 
     def update(self, mouse_position, modifiers):
-        if not self.annotating:
+        print(len(self))
+        if not self.annotating or len(self) == 0:
             return
         data_dict = self.data_dict
         if 'ctrl' in modifiers:
@@ -55,9 +56,13 @@ class EyeTrackingAnnotator(AnnotatorBase):
 
     def stop_annotation(self):
         self.save('tmp_eyes.json')
+
+    def update_instructions(self):
         labeled_frames = len(self.data_dict['ts'])
         color = self.cm(labeled_frames * 20)
         hex = rgb2hex(color)
         self.instructions = self.base_instructions + f'\nFrames labeld: [color={hex}]{labeled_frames}[/color]'
 
-        return super().stop_annotation()
+    def on_data_dict(self, window, data_dict):
+        self.update_instructions()
+        return super().on_data_dict(window, data_dict)

@@ -41,6 +41,7 @@ from .EyeTracker import EyeTracker
 from .EyeTrackingAnnotator import EyeTrackingAnnotator
 from .BoundingBoxAnnotator import BoundingBoxAnnotator
 
+
 class ZoomableImage(Scatter):
 
     def __init__(self, **kwargs):
@@ -71,6 +72,7 @@ class ZoomableImage(Scatter):
             return False
         else:
             return super(ZoomableImage, self).on_touch_down(touch)
+
 
 class Viewer(BoxLayout):
     data = DictProperty(force_dispatch=True)
@@ -146,13 +148,13 @@ class Viewer(BoxLayout):
                     self.annotator = BoundingBoxAnnotator(v)
                     return
             data_dict = {
-                        'ts': np.array([]),
-                        'minY': np.array([]),
-                        'minX': np.array([]),
-                        'maxY': np.array([]),
-                        'maxX': np.array([]),
-                        'label': np.array([]),
-                    }
+                'ts': np.array([]),
+                'minY': np.array([]),
+                'minX': np.array([]),
+                'maxY': np.array([]),
+                'maxX': np.array([]),
+                'label': np.array([]),
+            }
             viz = VisualiserBoundingBoxes(data=data_dict)
             self.settings['boundingBoxes'] = viz.get_settings()
             self.visualisers.append(viz)
@@ -190,7 +192,7 @@ class Viewer(BoxLayout):
     def redo(self):
         self.annotator.redo()
         self.get_frame(self.current_time, self.current_time_window)
-        
+
     def delete(self):
         self.annotator.delete_by_time(self.current_time)
         self.get_frame(self.current_time, self.current_time_window)
@@ -201,9 +203,9 @@ class Viewer(BoxLayout):
     def close_annotations(self):
         self.annotator = None
 
-    def on_touch_move(self, touch):
-        print(self)
-
+    def on_touch_move(self, touch):        
+        if not self.mouse_on_image:
+            return False
         if self.annotator is not None:
             self.annotator.update(self.mouse_position, self.modifiers)
             self.get_frame(self.current_time, self.current_time_window)

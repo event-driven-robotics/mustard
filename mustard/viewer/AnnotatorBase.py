@@ -1,9 +1,10 @@
 import numpy as np
 from kivy.event import EventDispatcher
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, DictProperty
 
 class AnnotatorBase(EventDispatcher):
     instructions = StringProperty('')
+    data_dict = DictProperty({})
 
     def __init__(self, visualizer=None) -> None:
         super().__init__()
@@ -107,3 +108,6 @@ class AnnotatorBase(EventDispatcher):
         for d in data_dict:
             if hasattr(data_dict[d], '__len__'):
                 data_dict[d] = data_dict[d][argsort]
+
+    def on_data_dict(self, window, data_dict):
+        self.visualizer.set_data(data_dict)
