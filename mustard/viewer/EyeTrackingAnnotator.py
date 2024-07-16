@@ -14,6 +14,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
             'Mouse: rotate, Ctrl+mouse: translate, Alt+mouse: resize'
         self.instructions = self.base_instructions
         self.cm = colormaps.get_cmap('RdYlGn')
+        self.fixed_radius = 100
         super().__init__(visualizer)
 
     def create_new_data_entry(self, current_time, mouse_pos):
@@ -22,7 +23,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
         data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], mouse_pos[1])
         data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], mouse_pos[0])
         data_dict['eyeball_radius'] = np.append(data_dict['eyeball_radius'], np.mean(
-            data_dict['eyeball_radius']) if len(data_dict['eyeball_radius']) else 100)
+            data_dict['eyeball_radius']) if len(data_dict['eyeball_radius']) else self.fixed_radius)
         data_dict['eyeball_phi'] = np.append(data_dict['eyeball_phi'], 0)
         data_dict['eyeball_theta'] = np.append(data_dict['eyeball_theta'], 0)
 
@@ -46,8 +47,10 @@ class EyeTrackingAnnotator(AnnotatorBase):
             data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + \
                 (mouse_position[1] - self.initial_mouse_pos[1])
         elif 'alt' in modifiers:
-            data_dict['eyeball_radius'][self.annotation_idx] = self.initial_data['eyeball_radius'] - \
+            radius = self.initial_data['eyeball_radius'] - \
                 (mouse_position[1] - self.initial_mouse_pos[1])
+            data_dict['eyeball_radius'][self.annotation_idx] = radius
+            self.fixed_radius = radius
         else:
             data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - \
                 np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
