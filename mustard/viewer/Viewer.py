@@ -461,7 +461,8 @@ class Viewer(BoxLayout):
                 y, x) for x, y in zip(data_dict['eyeball_x'], data_dict['eyeball_y'])]
         if settings['fixed_radius']:
             for i in range(len(data_dict['eyeball_radius'])):
-                data_dict['eyeball_radius'][i] = self.annotator.fixed_radius
+                if self.annotator is not None:
+                    data_dict['eyeball_radius'][i] = self.annotator.fixed_radius
         eye_track = EyeTracker(**eye_tracking_args)
         self.image.add_widget(eye_track)
 
