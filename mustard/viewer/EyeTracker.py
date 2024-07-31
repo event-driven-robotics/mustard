@@ -29,7 +29,7 @@ class EyeTracker(Widget):
             c = np.sqrt(1 - r ** 2)
 
             self.ellipse_points = []
-            for alpha in np.arange(-np.pi, np.pi, np.pi/180):
+            for alpha in np.arange(-np.pi, np.pi, np.pi/10):
                 xhat = r*np.cos(alpha)
                 yhat = r*np.sin(alpha)
                 x = radius*(xhat*np.cos(phi)+c*np.sin(phi)) + center_x

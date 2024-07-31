@@ -352,13 +352,13 @@ class TimeSlider(Slider):
 
     def play_pause(self):
         if self.clock is None:
-            self.clock = Clock.schedule_interval(self.increase_slider, 0.001)
+            self.clock = Clock.schedule_interval(self.increase_slider, 0.03)
         else:
             if self.clock.is_triggered:
                 self.clock.cancel()
             else:
                 self.clock.cancel()
-                self.clock = Clock.schedule_interval(self.increase_slider, 0.001)
+                self.clock = Clock.schedule_interval(self.increase_slider, 0.03)
 
     def pause(self):
         if self.clock is not None:
@@ -367,12 +367,12 @@ class TimeSlider(Slider):
     def play_forward(self):
         if self.clock is not None:
             self.clock.cancel()
-        self.clock = Clock.schedule_interval(self.increase_slider, 0.001)
+        self.clock = Clock.schedule_interval(self.increase_slider, 0.03)
 
     def play_backward(self):
         if self.clock is not None:
             self.clock.cancel()
-        self.clock = Clock.schedule_interval(self.decrease_slider, 0.001)
+        self.clock = Clock.schedule_interval(self.decrease_slider, 0.03)
 
     def stop(self):
         if self.clock is not None:
