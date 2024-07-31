@@ -448,15 +448,16 @@ class Viewer(BoxLayout):
                 'center_x': eyeball_x,
                 'center_y': eyeball_y,
                 'radius': radius * self.get_aspect_ratio()[0]
-            })
+            })  
+        viz_found = False
+        for v in self.visualisers:
+            if isinstance(v, VisualiserEyeTracking):
+                data_dict = v.get_data()
+                viz_found = True
+        if not viz_found:
+            return
         if settings['show_xy_pointcloud']:
-            viz_found = False
-            for v in self.visualisers:
-                if isinstance(v, VisualiserEyeTracking):
-                    data_dict = v.get_data()
-                    viz_found = True
-            if not viz_found:
-                return
+
             eye_tracking_args['pointcloud'] = [self.img_to_window_coordinates(
                 y, x) for x, y in zip(data_dict['eyeball_x'], data_dict['eyeball_y'])]
         if settings['fixed_radius']:
