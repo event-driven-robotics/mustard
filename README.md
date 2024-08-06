@@ -28,3 +28,19 @@ or
 ```
 python -m mustard
 ```
+
+# Run without installing
+
+sudo apt install python3 python3-pip
+
+pip install scipy opencv-python matplotlib kivy numpy tqdm imageio
+
+git clone --recurse-submodules git@github.com:event-driven-robotics/bimvee.git
+
+git clone --recurse-submodules git@github.com:event-driven-robotics/mustard.git
+
+%add the following line to .profile
+export PYTHONPATH=$PYTHONPATH:~/code/bimvee:~/code/mustard
+
+cd mustard
+python3 mustard/__main__.py
