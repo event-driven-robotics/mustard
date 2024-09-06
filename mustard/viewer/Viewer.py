@@ -175,6 +175,7 @@ class Viewer(BoxLayout):
                 'eyeball_y': np.array([]),
                 'eyeball_phi': np.array([]),
                 'eyeball_theta': np.array([]),
+                'eye_closed': np.array([]),
                 'ts': np.array([]),
                 'tsOffset': tsOffset
             }

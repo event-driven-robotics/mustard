@@ -26,6 +26,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
             data_dict['eyeball_radius']) if len(data_dict['eyeball_radius']) else self.fixed_radius)
         data_dict['eyeball_phi'] = np.append(data_dict['eyeball_phi'], 0)
         data_dict['eyeball_theta'] = np.append(data_dict['eyeball_theta'], 0)
+        data_dict['eye_closed'] = np.append(data_dict['eye_closed'], False)
 
     def save(self, path, **kwargs):
         data_dict = deepcopy(dict(self.data_dict))
