@@ -33,12 +33,19 @@ class EyeTrackingAnnotator(AnnotatorBase):
         data_dict['ts'] -= data_dict['tsOffset']
         out_list = []
         for i in range(len(data_dict['ts'])):
-            out_list.append({x: data_dict[x][i] for x in data_dict if hasattr(data_dict[x], '__len__')})
+            out_dict = {}
+            for x in data_dict:
+                if not hasattr(data_dict[x], '__len__'):
+                    continue
+                val = data_dict[x][i]
+                if val.dtype.kind == 'i':
+                    val = int(val)
+                out_dict.update({x: val})
+            out_list.append(out_dict)
         with open(path, 'w') as f:
             json.dump(out_list, f)
 
     def update(self, mouse_position, modifiers):
-        print(len(self))
         if not self.annotating or len(self) == 0:
             return
         data_dict = self.data_dict
