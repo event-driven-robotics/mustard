@@ -175,7 +175,7 @@ class Viewer(BoxLayout):
                 'eyeball_y': np.array([]),
                 'eyeball_phi': np.array([]),
                 'eyeball_theta': np.array([]),
-                'eye_closed': np.array([]),
+                'eye_closed': np.array([], dtype=bool),
                 'ts': np.array([]),
                 'tsOffset': tsOffset
             }
@@ -207,6 +207,8 @@ class Viewer(BoxLayout):
     def on_touch_move(self, touch):        
         if not self.mouse_on_image:
             return False
+        if 'shift' in self.modifiers:
+            return False
         if self.annotator is not None:
             self.annotator.update(self.mouse_position, self.modifiers)
             self.get_frame(self.current_time, self.current_time_window)
@@ -229,6 +231,10 @@ class Viewer(BoxLayout):
             return False
         if self.annotator is not None:
             self.annotator.start_annotation(self.current_time, list(self.mouse_position))
+            modifiers = self.modifiers
+            if touch.button == 'right':
+                modifiers = [*modifiers, 'right_click']
+            self.annotator.update(self.mouse_position, modifiers)
             self.get_frame(self.current_time, self.current_time_window)
         return False
 
@@ -453,6 +459,11 @@ class Viewer(BoxLayout):
             try:
                 if eye_tracking['interpolated']:
                     eye_tracking_args['alpha'] = 0.5
+            except KeyError:
+                pass
+            try:
+                if eye_tracking['eye_closed']:
+                    eye_tracking_args['ellipse_color'] = (1, 1, 0)
             except KeyError:
                 pass
         viz_found = False

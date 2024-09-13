@@ -44,8 +44,9 @@ class EyeTracker(Widget):
             self.center_x = int(center_x)
             self.center_y = int(center_y)
             alpha = kwargs.get('alpha', 1)
+            color = kwargs.get('ellipse_color', (1, 0, 0))
             with self.canvas:
-                Color(1, 0, 0, alpha)
+                Color(*color, alpha)
                 Line(points=self.ellipse_points)
                 Color(0, 1, 0, alpha)
                 Ellipse(pos=(self.iris_x_center - 3, self.iris_y_center - 3), size=(6, 6))

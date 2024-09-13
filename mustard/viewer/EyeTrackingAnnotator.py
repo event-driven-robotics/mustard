@@ -11,7 +11,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
     def __init__(self, visualizer) -> None:
         self.base_instructions = 'Annotating eyes. 1. click on eyeball center' + \
             '2. match the iris center 3. adjust size with alt+mouse\n' +\
-            'Mouse: rotate, Ctrl+mouse: translate, Alt+mouse: resize'
+            'Mouse: rotate, Ctrl+mouse: translate, Alt+mouse: resize, Right_click to toggle eye closed flag'
         self.instructions = self.base_instructions
         self.cm = colormaps.get_cmap('RdYlGn')
         self.fixed_radius = 100
@@ -47,6 +47,12 @@ class EyeTrackingAnnotator(AnnotatorBase):
         if not self.annotating or len(self) == 0:
             return
         data_dict = self.data_dict
+        if 'right_click' in modifiers:
+            try:
+                data_dict['eye_closed'][self.annotation_idx] = not data_dict['eye_closed'][self.annotation_idx]
+            except KeyError:
+                data_dict['eye_closed'] = np.full(len(data_dict['ts']), False)
+                data_dict['eye_closed'][self.annotation_idx] = not data_dict['eye_closed'][self.annotation_idx]
         if 'ctrl' in modifiers:
             data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + \
                 (mouse_position[0] - self.initial_mouse_pos[0])
