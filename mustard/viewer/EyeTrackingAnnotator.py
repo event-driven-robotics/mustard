@@ -37,9 +37,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
             for x in data_dict:
                 if not hasattr(data_dict[x], '__len__'):
                     continue
-                val = data_dict[x][i]
-                if val.dtype.kind == 'i':
-                    val = int(val)
+                val = data_dict[x][i].item()
                 out_dict.update({x: val})
             out_list.append(out_dict)
         with open(path, 'w') as f:
