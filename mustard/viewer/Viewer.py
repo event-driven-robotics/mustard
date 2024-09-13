@@ -450,6 +450,11 @@ class Viewer(BoxLayout):
                 'center_y': eyeball_y,
                 'radius': radius * self.get_aspect_ratio()[0]
             })  
+            try:
+                if eye_tracking['interpolated']:
+                    eye_tracking_args['alpha'] = 0.5
+            except KeyError:
+                pass
         viz_found = False
         for v in self.visualisers:
             if isinstance(v, VisualiserEyeTracking):

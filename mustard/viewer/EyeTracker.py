@@ -22,16 +22,16 @@ class EyeTracker(Widget):
                  radius=None,
                  pointcloud=None,
                  **kwargs):
-        super(EyeTracker, self).__init__(**kwargs)
+        super(EyeTracker, self).__init__()
 
         if phi is not None:
             r = 0.5
             c = np.sqrt(1 - r ** 2)
 
             self.ellipse_points = []
-            for alpha in np.arange(-np.pi, np.pi + np.pi/10, np.pi/10):
-                xhat = r*np.cos(alpha)
-                yhat = r*np.sin(alpha)
+            for angle in np.arange(-np.pi, np.pi + np.pi/10, np.pi/10):
+                xhat = r*np.cos(angle)
+                yhat = r*np.sin(angle)
                 x = radius*(xhat*np.cos(phi)+c*np.sin(phi)) + center_x
                 y = radius*((xhat*np.sin(phi)-c*np.cos(phi))*np.sin(theta)+yhat*np.cos(theta)) + center_y
                 self.ellipse_points.append(x)
@@ -43,13 +43,14 @@ class EyeTracker(Widget):
             self.gaze_line_y = int(radius * 1.5 * (c*(-np.sin(theta)*np.cos(phi))) + center_y)
             self.center_x = int(center_x)
             self.center_y = int(center_y)
+            alpha = kwargs.get('alpha', 1)
             with self.canvas:
-                Color(1, 0, 0, 1)
+                Color(1, 0, 0, alpha)
                 Line(points=self.ellipse_points)
-                Color(0, 1, 0, 1)
+                Color(0, 1, 0, alpha)
                 Ellipse(pos=(self.iris_x_center - 3, self.iris_y_center - 3), size=(6, 6))
                 Ellipse(pos=(self.center_x - 3, self.center_y - 3), size=(6, 6))
-                Color(0, 0, 1, 1)
+                Color(0, 0, 1, alpha)
                 Line(points=(self.center_x, self.center_y, self.gaze_line_x, self.gaze_line_y))
         if pointcloud is not None:
             with self.canvas:
