@@ -15,13 +15,24 @@ class EyeTrackingAnnotator(AnnotatorBase):
         self.instructions = self.base_instructions
         self.cm = colormaps.get_cmap('RdYlGn')
         self.fixed_radius = 100
+        self.fixed_x = None
+        self.fixed_y = None
         super().__init__(visualizer)
 
     def create_new_data_entry(self, current_time, mouse_pos):
         data_dict = self.data_dict
         data_dict['ts'] = np.append(data_dict['ts'], current_time)
-        data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], mouse_pos[1])
-        data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], mouse_pos[0])
+        if self.fixed_x is None and self.fixed_y is None:
+            new_x = mouse_pos[1]
+            new_y = mouse_pos[0]
+            self.fixed_x = new_x
+            self.fixed_y = new_y
+        else:
+            new_x = self.fixed_x
+            new_y = self.fixed_y
+            
+        data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], new_x)
+        data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], new_y)
         data_dict['eyeball_radius'] = np.append(data_dict['eyeball_radius'], np.mean(
             data_dict['eyeball_radius']) if len(data_dict['eyeball_radius']) else self.fixed_radius)
         data_dict['eyeball_phi'] = np.append(data_dict['eyeball_phi'], 0)
@@ -54,10 +65,14 @@ class EyeTrackingAnnotator(AnnotatorBase):
                 data_dict['eye_closed'] = np.full(len(data_dict['ts']), False)
                 data_dict['eye_closed'][self.annotation_idx] = not data_dict['eye_closed'][self.annotation_idx]
         if 'ctrl' in modifiers:
-            data_dict['eyeball_y'][self.annotation_idx] = self.initial_data['eyeball_y'] + \
-                (mouse_position[0] - self.initial_mouse_pos[0])
-            data_dict['eyeball_x'][self.annotation_idx] = self.initial_data['eyeball_x'] + \
-                (mouse_position[1] - self.initial_mouse_pos[1])
+            new_y = self.initial_data['eyeball_y'] + (mouse_position[0] - self.initial_mouse_pos[0])
+            new_x = self.initial_data['eyeball_x'] + (mouse_position[1] - self.initial_mouse_pos[1])
+
+            data_dict['eyeball_y'][self.annotation_idx] = new_y
+            data_dict['eyeball_x'][self.annotation_idx] = new_x
+            self.fixed_x = new_x
+            self.fixed_y = new_y
+            
         elif 'alt' in modifiers:
             radius = self.initial_data['eyeball_radius'] - \
                 (mouse_position[1] - self.initial_mouse_pos[1])

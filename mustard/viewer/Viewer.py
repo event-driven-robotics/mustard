@@ -473,14 +473,26 @@ class Viewer(BoxLayout):
                 viz_found = True
         if not viz_found:
             return
-        if settings['show_xy_pointcloud']:
-
-            eye_tracking_args['pointcloud'] = [self.img_to_window_coordinates(
-                y, x) for x, y in zip(data_dict['eyeball_x'], data_dict['eyeball_y'])]
         if settings['fixed_radius']:
             for i in range(len(data_dict['eyeball_radius'])):
                 if self.annotator is not None:
                     data_dict['eyeball_radius'][i] = self.annotator.fixed_radius
+        if settings['fixed_uv']:
+            for i in range(len(data_dict['eyeball_x'])):
+                if self.annotator is not None:
+                    if self.annotator.fixed_x is not None and self.annotator.fixed_y is not None:
+                        data_dict['eyeball_x'][i] = self.annotator.fixed_x
+                        data_dict['eyeball_y'][i] = self.annotator.fixed_y
+                    elif eye_tracking is not None:
+                        data_dict['eyeball_x'][i] = eye_tracking['eyeball_x']
+                        data_dict['eyeball_y'][i] = eye_tracking['eyeball_y']
+        else:
+            self.annotator.fixed_x = None
+            self.annotator.fixed_y = None
+            
+        if settings['show_xy_pointcloud']:
+            eye_tracking_args['pointcloud'] = [self.img_to_window_coordinates(
+                y, x) for x, y in zip(data_dict['eyeball_x'], data_dict['eyeball_y'])]
         eye_track = EyeTracker(**eye_tracking_args)
         self.image.add_widget(eye_track)
 
