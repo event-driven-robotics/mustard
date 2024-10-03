@@ -288,9 +288,12 @@ class DataController(GridLayout):
 
     def show_load(self):
         self.dismiss_popup()
+        load_path=self.cache_json['LastLoadedPath']
+        while len(os.listdir(load_path)) > 100:
+            load_path=os.path.dirname(load_path)
         content = LoadDialog(load=self.load,
                              cancel=self.dismiss_popup,
-                             load_path=self.cache_json['LastLoadedPath'])
+                             load_path=load_path)
         self._popup = Popup(title="Load file", content=content,
                             size_hint=(0.9, 0.9))
         self._popup.open()
