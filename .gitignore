@@ -4,6 +4,5 @@ build
 dist
 mustard_gui.egg-info
 *.pyc
-.vscode/
-tmp.json
+tmp*.json
 .env

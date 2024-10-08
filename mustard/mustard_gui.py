@@ -17,7 +17,7 @@ Use kivy to create an app which can receive data dicts as imported by bimvee
 importAe, and allow synchronised playback for each of the contained channels and datatypes. 
 """
 # standard imports
-from mustard.viewer import Viewer
+from .viewer.Viewer import Viewer
 from kivy.core.window import Window
 from kivy.properties import DictProperty
 from kivy.properties import StringProperty, NumericProperty
@@ -31,11 +31,15 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.clock import Clock
 from kivy.uix.slider import Slider
 from kivy.app import App
+from kivy.config import Config
+from kivy.base import EventLoop
+from kivy.input.providers.mouse import MouseMotionEventProvider
 import numpy as np
 import sys
 import os
 import json
 from textwrap import wrap
+Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 os.environ['KIVY_NO_ARGS'] = 'T'
 
@@ -67,6 +71,7 @@ try:
     from visualiser import VisualiserPoint3
     from visualiser import VisualiserPose6q
     from visualiser import VisualiserBoundingBoxes
+    from visualiser import VisualiserEyeTracking
     from visualiser import VisualiserOpticFlow
     from visualiser import VisualiserImu
     from timestamps import getLastTimestamp
@@ -78,6 +83,7 @@ except ModuleNotFoundError:
     from bimvee.visualiser import VisualiserPoint3
     from bimvee.visualiser import VisualiserPose6q
     from bimvee.visualiser import VisualiserBoundingBoxes
+    from bimvee.visualiser import VisualiserEyeTracking
     from bimvee.visualiser import VisualiserOpticFlow
     from bimvee.visualiser import VisualiserImu
     from bimvee.timestamps import getLastTimestamp
@@ -106,6 +112,7 @@ class SaveDialog(FloatLayout):
     save = ObjectProperty(None)
     cancel = ObjectProperty(None)
     save_path = StringProperty(None)
+
 
 class DictEditor(GridLayout):
     dict = DictProperty(None)
@@ -173,7 +180,7 @@ class DataController(GridLayout):
                 self.cache_json = json.load(f)
         except FileNotFoundError:
             with open(self.tmp_cache_path, 'w+') as f:
-                self.cache_json = {"LastLoadedPath" : "~"}
+                self.cache_json = {"LastLoadedPath": "~"}
                 json.dump(self.cache_json, f)
 
     def update_children(self):
@@ -202,10 +209,12 @@ class DataController(GridLayout):
                 channel_name = channel_name + '\nred=x green=y, blue=z'
             elif data_type == 'skeleton':
                 visualiser = VisualiserSkeleton(data_dict[data_type])
+            elif data_type == 'eyeTracking':
+                visualiser = VisualiserEyeTracking(data_dict[data_type])
             else:
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
                 continue
-            
+
             settings[data_type] = visualiser.get_settings()
             visualisers.append(visualiser)
         if visualisers:
@@ -248,9 +257,9 @@ class DataController(GridLayout):
                     print('    ' * recursionDepth + 'Ignoring that key ...')
 
     def on_data_dict(self, instance, value):
-        while len(self.children) > 0:
-            self.remove_widget(self.children[0])
-            print('Removed an old viewer; num remaining viewers: ' + str(len(self.children)))
+        for child in self.children:
+            child.close()
+        self.clear_widgets()
         if (self.data_dict is None) or not self.data_dict:
             # When using ntupleviz programmatically, pass an empty dict or None
             # to allow the container to be passed again once updated
@@ -279,9 +288,14 @@ class DataController(GridLayout):
 
     def show_load(self):
         self.dismiss_popup()
+        load_path=self.cache_json['LastLoadedPath']
+        if not os.path.isdir(load_path):
+            load_path=os.path.dirname(load_path)
+        while len(os.listdir(load_path)) > 100:
+            load_path=os.path.dirname(load_path)
         content = LoadDialog(load=self.load,
                              cancel=self.dismiss_popup,
-                             load_path=self.cache_json['LastLoadedPath'])
+                             load_path=load_path)
         self._popup = Popup(title="Load file", content=content,
                             size_hint=(0.9, 0.9))
         self._popup.open()
@@ -311,10 +325,10 @@ class DataController(GridLayout):
 
         self.update_cache_element("LastLoadedPath", self.filePathOrName)
         try:
-            self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template) 
+            self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template)
             # TODO Handle rosbag case with template dialog
         except Exception as e:
-            self.show_warning_popup('\n'.join(wrap(str(e), width=40)))
+            self.show_warning_popup('\n'.join(wrap(f'{type(e).__name__}:{str(e)}', width=40)))
         self.update_children()
 
     def update_cache_element(self, key, val):
@@ -343,13 +357,13 @@ class TimeSlider(Slider):
 
     def play_pause(self):
         if self.clock is None:
-            self.clock = Clock.schedule_interval(self.increase_slider, 0.001)
+            self.clock = Clock.schedule_interval(self.increase_slider, 0.03)
         else:
             if self.clock.is_triggered:
                 self.clock.cancel()
             else:
                 self.clock.cancel()
-                self.clock = Clock.schedule_interval(self.increase_slider, 0.001)
+                self.clock = Clock.schedule_interval(self.increase_slider, 0.03)
 
     def pause(self):
         if self.clock is not None:
@@ -358,12 +372,12 @@ class TimeSlider(Slider):
     def play_forward(self):
         if self.clock is not None:
             self.clock.cancel()
-        self.clock = Clock.schedule_interval(self.increase_slider, 0.001)
+        self.clock = Clock.schedule_interval(self.increase_slider, 0.03)
 
     def play_backward(self):
         if self.clock is not None:
             self.clock.cancel()
-        self.clock = Clock.schedule_interval(self.decrease_slider, 0.001)
+        self.clock = Clock.schedule_interval(self.decrease_slider, 0.03)
 
     def stop(self):
         if self.clock is not None:
@@ -387,6 +401,14 @@ class RootWidget(BoxLayout):
         super(RootWidget, self).__init__(**kwargs)
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
         self._keyboard.bind(on_key_down=self._on_keyboard_down, on_key_up=self._on_keyboard_up)
+        Clock.schedule_once(self.init_mouse_provider, 1)
+
+    # Little hack to enable alt+drag for
+    def init_mouse_provider(self, a):
+        for provider in EventLoop.input_providers:
+            if isinstance(provider, MouseMotionEventProvider):
+                provider.start()
+                break
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         if keycode[1] == 'right':
@@ -396,23 +418,30 @@ class RootWidget(BoxLayout):
         if keycode[1] == 'spacebar':
             self.ids['time_slider'].play_pause()
         for viewer in self.data_controller.children:
-            viewer.transform_allowed = 'shift' in modifiers
+            viewer.modifiers = modifiers
             try:
-                viewer.label = int(keycode[1][-1])
-            except ValueError:
+                viewer.annotator.label = int(keycode[1][-1])
+            except (AttributeError, ValueError):
                 continue
             # Return True to accept the key. Otherwise, it will be used by the system.
         return True
 
     def _on_keyboard_up(self, keyboard, keycode):
-        for viewer in self.data_controller.children:
-            viewer.transform_allowed = False
-            # Return True to accept the key. Otherwise, it will be used by the system.
+        try:
+            for viewer in self.data_controller.children:
+                if keycode[1].endswith('ctrl'):
+                    viewer.modifiers.remove('ctrl')
+                elif keycode[1].endswith('shift'):
+                    viewer.modifiers.remove('shift')
+                elif keycode[1].startswith('alt'):
+                    viewer.modifiers.remove('alt')
+                # Return True to accept the key. Otherwise, it will be used by the system.
+        except ValueError:
+            pass
         return True
 
     def _keyboard_closed(self):
-        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
-        del self._keyboard
+        return
 
 
 class Mustard(App):

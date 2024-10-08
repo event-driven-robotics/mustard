@@ -18,7 +18,7 @@
 
 <BoundingBox@Widget>:
     bb: 0.0, 0.0, 0.0, 0.0
-    bb_color: 1, .1, 1, .9
+    bb_color: 1, 1, 1, 1
     label: 0
     size_hint: 1, 1
     canvas:
@@ -209,42 +209,69 @@
                 text: "Flip horiz"
                 on_press: self.source='graphics/flip_horiz_off.png'; root.flipHoriz = not root.flipHoriz; root.on_data(None, None)
                 on_release:  self.source='graphics/flip_horiz.png';
+            BoxLayout:
+                orientation: 'horizontal'
+                Label:
+                    text: 'Annotation type: '
+                Spinner:
+                    id: annotation_spinner
+                    text: 'Eyes'
+                    values: 'Boxes', 'Eyes'
             Button:
-                text: 'Annotate' if not root.labeling else 'Save'
-                on_release: app.root.data_controller.show_save(save_fun=root.save_bboxes) if root.labeling else root.init_annotation()
+                text: 'Annotate' if root.annotator is None else 'Save'
+                on_release: app.root.data_controller.show_save(save_fun=root.save_annotations) if root.annotator is not None else root.init_annotation(annotation_spinner.text)
             Button:
                 text: 'Undo'
-                disabled: not root.labeling
-                on_release: root.remove_last_bbox()
+                disabled: root.annotator is None
+                on_release: root.undo()    
+            Button:
+                text: 'Redo'
+                disabled: root.annotator is None
+                on_release: root.redo()            
+            Button:
+                text: 'Delete'
+                disabled: root.annotator is None
+                on_release: root.delete()
             Button:
                 text: 'Stop'
-                disabled: not root.labeling
-                on_release: root.labeling = False
-        ZoomableImage:
-            id: zoomable_image
-            do_rotation: False
-            auto_bring_to_front: False
-            scale_min: 0.5
-            scale_max: 10
-            clickable_area: (box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
-            transform_allowed: root.transform_allowed
-            on_bbox: root.crop_image(*self.clickable_area)
-            Image:
-                id: image
-                size: zoomable_image.size
-                allow_stretch: True
-                on_size: root.crop_image(*zoomable_image.clickable_area)
-                keep_ratio: True
-    Label:
-        size_hint: 1, 0.05
-        id: label_status
-        text: 'Use num keys to change tag. Labeling {}\nLabeled boxes = {}'.format(str(root.label), str(root.len_gt)) if root.labeling else ''
-
-
+                disabled: root.annotator is None
+                on_release: root.close_annotations()
+            Button:
+                text: 'Next'
+                disabled: root.annotator is None
+                on_release: app.root.time_slider.value = root.annotator.get_time_of_next_annotated_frame(app.root.time_slider.value)
+            Button:
+                text: 'Previous'
+                disabled: root.annotator is None
+                on_release: app.root.time_slider.value = root.annotator.get_time_of_next_annotated_frame(app.root.time_slider.value, backward=True)
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: 20
+            ZoomableImage:
+                id: zoomable_image
+                do_rotation: False
+                auto_bring_to_front: False
+                scale_min: 0.5
+                scale_max: 10
+                clickable_area: (box.x + viewer_buttons.width, box.y, box.width - viewer_buttons.width, box.height)
+                transform_allowed: 'shift' in root.modifiers
+                on_bbox: root.crop_image(*self.clickable_area)
+                Image:
+                    id: image
+                    size: zoomable_image.size
+                    allow_stretch: True
+                    on_size: root.crop_image(*zoomable_image.clickable_area)
+                    keep_ratio: True
+            Label:
+                size_hint: 1, 0.05
+                text_size: self.width, None
+                id: label_status
+                markup: True
 
 <RootWidget>
     orientation:'horizontal'
     data_controller: data_controller
+    time_slider: time_slider
     BoxLayout:
         orientation: 'vertical'
         size_hint: .15, 1
