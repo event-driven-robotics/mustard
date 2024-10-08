@@ -289,6 +289,8 @@ class DataController(GridLayout):
     def show_load(self):
         self.dismiss_popup()
         load_path=self.cache_json['LastLoadedPath']
+        if not os.path.isdir(load_path):
+            load_path=os.path.dirname(load_path)
         while len(os.listdir(load_path)) > 100:
             load_path=os.path.dirname(load_path)
         content = LoadDialog(load=self.load,
@@ -326,7 +328,7 @@ class DataController(GridLayout):
             self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template)
             # TODO Handle rosbag case with template dialog
         except Exception as e:
-            self.show_warning_popup('\n'.join(wrap(str(e), width=40)))
+            self.show_warning_popup('\n'.join(wrap(f'{type(e).__name__}:{str(e)}', width=40)))
         self.update_children()
 
     def update_cache_element(self, key, val):
