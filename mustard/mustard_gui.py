@@ -180,7 +180,7 @@ class DataController(GridLayout):
                 self.cache_json = json.load(f)
         except FileNotFoundError:
             with open(self.tmp_cache_path, 'w+') as f:
-                self.cache_json = {"LastLoadedPath": "~"}
+                self.cache_json = {"LastLoadedPath": os.path.expanduser('~')}
                 json.dump(self.cache_json, f)
 
     def update_children(self):
