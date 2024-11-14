@@ -88,6 +88,8 @@ class AnnotatorBase(EventDispatcher):
         data_dict = self.data_dict
         self.update_previous_dicts()
         for d in data_dict:
+            if not hasattr(data_dict[d], '__len__'):
+                continue
             try:
                 data_dict[d] = np.delete(data_dict[d], idx)
             except IndexError:

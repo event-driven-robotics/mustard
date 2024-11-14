@@ -146,6 +146,8 @@ class Viewer(BoxLayout):
             for v in self.visualisers:
                 if isinstance(v, VisualiserBoundingBoxes):
                     self.annotator = BoundingBoxAnnotator(v)
+                    self.ids['label_status'].text = self.annotator.instructions
+                    self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
                     return
             data_dict = {
                 'ts': np.array([]),
@@ -163,6 +165,18 @@ class Viewer(BoxLayout):
             for v in self.visualisers:
                 if isinstance(v, VisualiserEyeTracking):
                     self.annotator = EyeTrackingAnnotator(v)
+                    self.ids['label_status'].text = self.annotator.instructions
+                    unique_x = np.unique(v.get_data()['eyeball_x'])
+                    unique_y = np.unique(v.get_data()['eyeball_y'])
+                    if len(unique_x) > 1 or len(unique_y) > 1:
+                        self.settings['eyeTracking']['fixed_uv']['default'] = False
+                        self.on_settings(None, self.settings)
+                    
+                    if self.settings_values['eyeTracking']['fixed_uv']:
+                        self.annotator.fixed_x = unique_x[0]
+                        self.annotator.fixed_y = unique_y[0]
+
+                    self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
                     return
                 else:
                     try:
@@ -253,8 +267,9 @@ class Viewer(BoxLayout):
     def on_settings(self, instance, settings_dict):
         if self.settings_box is not None:
             self.settings_box.clear_widgets()
-        self.settings_box = BoxLayout(size_hint=(1, 0.2), spacing=5)
-        self.add_widget(self.settings_box)
+        else:
+            self.settings_box = BoxLayout(size_hint=(1, 0.2), spacing=5)
+            self.add_widget(self.settings_box)
         self.update_settings(self.settings_box, settings_dict, self.settings_values)
 
     def on_settings_change(self, instance, value):
@@ -486,7 +501,7 @@ class Viewer(BoxLayout):
                     elif eye_tracking is not None:
                         data_dict['eyeball_x'][i] = eye_tracking['eyeball_x']
                         data_dict['eyeball_y'][i] = eye_tracking['eyeball_y']
-        else:
+        elif self.annotator is not None:
             self.annotator.fixed_x = None
             self.annotator.fixed_y = None
             
