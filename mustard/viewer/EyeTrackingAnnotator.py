@@ -91,7 +91,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
         labeled_frames = len(self.data_dict['ts'])
         color = self.cm(labeled_frames * 20)
         hex = rgb2hex(color)
-        self.instructions = self.base_instructions + f'\nFrames labeld: [color={hex}]{labeled_frames}[/color]'
+        self.instructions = self.base_instructions + f'\nFrames labeld: [color={hex}]{labeled_frames}[/color], radius = {self.fixed_radius}'
 
     def on_data_dict(self, window, data_dict):
         self.update_instructions()
