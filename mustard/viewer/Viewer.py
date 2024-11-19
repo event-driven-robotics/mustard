@@ -90,7 +90,7 @@ class Viewer(BoxLayout):
     annotator = ObjectProperty(None, allownone=True)
     instructions = StringProperty('')
 
-    def __init__(self, **kwargs):
+    def __init__(self, visualisers=None, title='', **kwargs):
         super(Viewer, self).__init__(**kwargs)
         self.settings_box = None
         from matplotlib.pyplot import get_cmap
@@ -101,6 +101,7 @@ class Viewer(BoxLayout):
         self.clicked_mouse_pos = None
         self.last_added_box_idx = -1
         self.cropped_region = [0, 0, 0, 0]
+        self.add_visualisers(visualisers)
 
     def window_to_image_coords(self, x, y, flip=True):
         scale = self.image.parent.scale
@@ -159,13 +160,12 @@ class Viewer(BoxLayout):
             }
             viz = VisualiserBoundingBoxes(data=data_dict)
             self.settings['boundingBoxes'] = viz.get_settings()
-            self.visualisers.append(viz)
+            self.add_visualisers(viz)
             self.annotator = BoundingBoxAnnotator(viz)
         elif type == 'eyes':
             for v in self.visualisers:
                 if isinstance(v, VisualiserEyeTracking):
                     self.annotator = EyeTrackingAnnotator(v)
-                    self.ids['label_status'].text = self.annotator.instructions
                     unique_x = np.unique(v.get_data()['eyeball_x'])
                     unique_y = np.unique(v.get_data()['eyeball_y'])
                     if len(unique_x) > 1 or len(unique_y) > 1:
@@ -176,6 +176,7 @@ class Viewer(BoxLayout):
                         self.annotator.fixed_x = unique_x[0]
                         self.annotator.fixed_y = unique_y[0]
 
+                    self.ids['label_status'].text = self.annotator.instructions
                     self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
                     return
                 else:
@@ -195,7 +196,7 @@ class Viewer(BoxLayout):
             }
             viz = VisualiserEyeTracking(data=data_dict)
             self.settings['eyeTracking'] = viz.get_settings()
-            self.visualisers.append(viz)
+            self.add_visualisers(viz)
             self.annotator = EyeTrackingAnnotator(viz)
         self.ids['label_status'].text = self.annotator.instructions
         self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
@@ -252,17 +253,19 @@ class Viewer(BoxLayout):
             self.get_frame(self.current_time, self.current_time_window)
         return False
 
-    def on_visualisers(self, instance, value):
-        self.init_visualisers()
-
-    def init_visualisers(self):
-        if self.visualisers is not None and self.visualisers:
-            for v in self.visualisers:
-                if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
-                    self.colorfmt = v.get_colorfmt()
-                    self.data_shape = v.get_dims()
-                    buf_shape = (self.data_shape[0], self.data_shape[1])
-                    self.image.texture = Texture.create(size=buf_shape, colorfmt=self.colorfmt)
+    def add_visualisers(self, visualisers):
+        settings = {}
+        if not hasattr(visualisers, '__len__'):
+            visualisers = [visualisers]
+        for v in visualisers:
+            self.visualisers.append(v)
+            settings[v.data_type] = v.get_settings()
+            if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
+                self.colorfmt = v.get_colorfmt()
+                self.data_shape = v.get_dims()
+                buf_shape = (self.data_shape[0], self.data_shape[1])
+                self.image.texture = Texture.create(size=buf_shape, colorfmt=self.colorfmt)
+        self.settings.update(settings)
 
     def on_settings(self, instance, settings_dict):
         if self.settings_box is not None:

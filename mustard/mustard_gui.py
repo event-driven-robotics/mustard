@@ -189,7 +189,6 @@ class DataController(GridLayout):
 
     def add_viewer_and_resize(self, data_dict, channel_name=''):
         visualisers = []
-        settings = {}
         for data_type in data_dict.keys():
             if data_type == 'dvs':
                 visualiser = VisualiserDvs(data_dict[data_type])
@@ -215,13 +214,9 @@ class DataController(GridLayout):
                 print("Warning! {} is not a recognized data type. Ignoring.".format(data_type))
                 continue
 
-            settings[data_type] = visualiser.get_settings()
             visualisers.append(visualiser)
         if visualisers:
-            new_viewer = Viewer()
-            new_viewer.title = channel_name
-            new_viewer.visualisers = visualisers
-            new_viewer.settings = settings
+            new_viewer = Viewer(title=channel_name, visualisers=visualisers)
             self.add_widget(new_viewer)
 
             self.cols = int(np.ceil(np.sqrt(len(self.children))))
