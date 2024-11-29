@@ -291,12 +291,12 @@
             cols: 2
             id: config
             ConfigLabel:
-                text: 'Speed:\n1/{}x'.format(speed_slider.div_value)
+                text: 'Speed:\n{}x'.format(speed_slider.div_value)
             ConfigSlider:
                 #disabled: not hasattr(data_controller.data_dict, 'data')
                 id: speed_slider
-                min: 1
-                max: 64
+                min: -16
+                max: 16
                 step: 1
                 value: 4
                 div_value: speed_slider.value/4

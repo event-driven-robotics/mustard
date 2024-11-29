@@ -339,13 +339,10 @@ class TimeSlider(Slider):
         self.speed = 1
 
     def increase_slider(self, dt):
-        self.value = min(self.value + dt / self.speed, self.max)
+        self.value = float(np.clip(self.value + dt * self.speed, self.min, self.max))
         if self.value >= self.max:
             if self.clock is not None:
                 self.clock.cancel()
-
-    def decrease_slider(self, dt):
-        self.value = max(self.value - dt / self.speed, 0.0)
         if self.value <= 0.0:
             if self.clock is not None:
                 self.clock.cancel()
@@ -372,7 +369,7 @@ class TimeSlider(Slider):
     def play_backward(self):
         if self.clock is not None:
             self.clock.cancel()
-        self.clock = Clock.schedule_interval(self.decrease_slider, 0.03)
+        self.clock = Clock.schedule_interval(self.increase_slider, -0.03)
 
     def stop(self):
         if self.clock is not None:
@@ -388,7 +385,7 @@ class TimeSlider(Slider):
 
     def step_backward(self):
         # self.decrease_slider(self.time_window)
-        self.decrease_slider(0.016)
+        self.increase_slider(-0.016)
 
 
 class RootWidget(BoxLayout):
