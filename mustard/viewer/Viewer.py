@@ -245,7 +245,7 @@ class Viewer(BoxLayout):
         if 'shift' in self.modifiers:
             return False
         if self.annotator is not None:
-            self.annotator.start_annotation(self.current_time, list(self.mouse_position))
+            self.annotator.start_annotation(self.current_time, list(self.mouse_position), self.current_time_window)
             modifiers = self.modifiers
             if touch.button == 'right':
                 modifiers = [*modifiers, 'right_click']

@@ -28,14 +28,14 @@ class AnnotatorBase(EventDispatcher):
     def create_new_data_entry(self, current_time, mouse_pos):
         raise NotImplementedError
 
-    def start_annotation(self, current_time, mouse_pos):
+    def start_annotation(self, current_time, mouse_pos, time_window):
         data_dict = self.data_dict
         self.update_previous_dicts()
         self.current_time = current_time
         self.initial_mouse_pos = mouse_pos
         self.annotation_idx = np.searchsorted(data_dict['ts'], current_time)
         try:
-            if abs(data_dict['ts'][self.annotation_idx] - current_time) > 0.03: #TODO Specialize initial data selection based on time or mosue position
+            if abs(data_dict['ts'][self.annotation_idx] - current_time) > time_window: #TODO Specialize initial data selection based on time or mosue position
                 raise IndexError
             self.initial_data = {x: data_dict[x][self.annotation_idx]
                                  for x in data_dict if hasattr(data_dict[x], '__len__')}
