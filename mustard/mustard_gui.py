@@ -65,30 +65,18 @@ except ModuleNotFoundError:
 # To get the graphics, set this as the current working directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # local imports (from bimvee)
-try:
-    from visualiser import VisualiserDvs
-    from visualiser import VisualiserFrame
-    from visualiser import VisualiserPoint3
-    from visualiser import VisualiserPose6q
-    from visualiser import VisualiserBoundingBoxes
-    from visualiser import VisualiserEyeTracking
-    from visualiser import VisualiserOpticFlow
-    from visualiser import VisualiserImu
-    from timestamps import getLastTimestamp
-except ModuleNotFoundError:
-    if __package__ is None or __package__ == '':
-        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from bimvee.visualiser import VisualiserDvs
-    from bimvee.visualiser import VisualiserFrame
-    from bimvee.visualiser import VisualiserPoint3
-    from bimvee.visualiser import VisualiserPose6q
-    from bimvee.visualiser import VisualiserBoundingBoxes
-    from bimvee.visualiser import VisualiserEyeTracking
-    from bimvee.visualiser import VisualiserOpticFlow
-    from bimvee.visualiser import VisualiserImu
-    from bimvee.timestamps import getLastTimestamp
-    from bimvee.visualiser import VisualiserSkeleton
 
+from bimvee.visualiser import VisualiserDvs
+from bimvee.visualiser import VisualiserFrame
+from bimvee.visualiser import VisualiserPoint3
+from bimvee.visualiser import VisualiserPose6q
+from bimvee.visualiser import VisualiserBoundingBoxes
+from bimvee.visualiser import VisualiserEyeTracking
+from bimvee.visualiser import VisualiserOpticFlow
+from bimvee.visualiser import VisualiserImu
+from bimvee.timestamps import getLastTimestamp
+from bimvee.visualiser import VisualiserSkeleton
+from bimvee.importers.ImporterBase import ImporterBase
 
 class ErrorPopup(Popup):
     label_text = StringProperty(None)
@@ -235,7 +223,7 @@ class DataController(GridLayout):
                 print('    ' * recursionDepth + 'Dict contains a key "' + key_name + '" ...')
                 if isinstance(in_dict[key_name], dict):
                     seen_keys.append(key_name)
-                    if 'ts' in in_dict[key_name]:
+                    if isinstance(in_dict[key_name], ImporterBase):
                         print('    ' * recursionDepth + 'Creating a new viewer, of type: ' + key_name)
                         self.add_viewer_and_resize(in_dict,
                                                    channel_name=seen_keys[-2])
