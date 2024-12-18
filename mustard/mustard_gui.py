@@ -308,8 +308,7 @@ class DataController(GridLayout):
 
         self.update_cache_element("LastLoadedPath", self.filePathOrName)
         try:
-            self.data_dict = importAe(filePathOrName=self.filePathOrName, template=template)
-            # TODO Handle rosbag case with template dialog
+            self.data_dict = importAe(filePathOrName=self.filePathOrName)
         except Exception as e:
             self.show_warning_popup('\n'.join(wrap(f'{type(e).__name__}:{str(e)}', width=40)))
         self.update_children()
