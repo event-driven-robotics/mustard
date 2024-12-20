@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 setup(
     name='mustard-gui',
     packages=find_packages(),
-    version='1.0.7',
+    version='2.0.0',
     license='gpl',
     description='MUlti STream Agnostic Representation Dataplayer',
     long_description=long_description,
