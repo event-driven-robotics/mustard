@@ -20,8 +20,6 @@ class EyeTrackingAnnotator(AnnotatorBase):
         super().__init__(visualizer)
 
     def create_new_data_entry(self, current_time, mouse_pos):
-        data_dict = self.data_dict
-        data_dict['ts'] = np.append(data_dict['ts'], current_time)
         if self.fixed_x is None and self.fixed_y is None:
             new_x = mouse_pos[1]
             new_y = mouse_pos[0]
@@ -30,16 +28,19 @@ class EyeTrackingAnnotator(AnnotatorBase):
         else:
             new_x = self.fixed_x
             new_y = self.fixed_y
-            
-        data_dict['eyeball_x'] = np.append(data_dict['eyeball_x'], new_x)
-        data_dict['eyeball_y'] = np.append(data_dict['eyeball_y'], new_y)
-        data_dict['eyeball_radius'] = np.append(data_dict['eyeball_radius'], np.mean(
-            data_dict['eyeball_radius']) if len(data_dict['eyeball_radius']) else self.fixed_radius)
-        data_dict['eyeball_phi'] = np.append(data_dict['eyeball_phi'], 0)
-        data_dict['eyeball_theta'] = np.append(data_dict['eyeball_theta'], 0)
-        data_dict['eye_closed'] = np.append(data_dict['eye_closed'], False)
+        new_entry = {'eyeball_x': new_x,
+                    'eyeball_y': new_y,
+                    'eyeball_phi': 0,
+                    'eyeball_theta': 0,
+                    'eyeball_radius': self.fixed_radius,
+                    'eye_closed' : False
+                    }
+
+        self.data_dict.insert_sorted(new_entry, current_time)
+        return new_entry
 
     def save(self, path, **kwargs):
+        return
         data_dict = deepcopy(dict(self.data_dict))
         data_dict['ts'] -= data_dict['tsOffset']
         out_list = []
@@ -57,42 +58,38 @@ class EyeTrackingAnnotator(AnnotatorBase):
     def update(self, mouse_position, modifiers):
         if not self.annotating or len(self) == 0:
             return
-        data_dict = self.data_dict
         if 'right_click' in modifiers:
             try:
-                data_dict['eye_closed'][self.annotation_idx] = not data_dict['eye_closed'][self.annotation_idx]
+                self.updated_data['eye_closed'] = not self.updated_data['eye_closed']
             except KeyError:
-                data_dict['eye_closed'] = np.full(len(data_dict['ts']), False)
-                data_dict['eye_closed'][self.annotation_idx] = not data_dict['eye_closed'][self.annotation_idx]
+                self.updated_data['eye_closed'] = np.full(len(self.data_dict), False)
+                self.updated_data['eye_closed'] = not self.updated_data['eye_closed']
         if 'ctrl' in modifiers:
             new_y = self.initial_data['eyeball_y'] + (mouse_position[0] - self.initial_mouse_pos[0])
             new_x = self.initial_data['eyeball_x'] + (mouse_position[1] - self.initial_mouse_pos[1])
 
-            data_dict['eyeball_y'][self.annotation_idx] = new_y
-            data_dict['eyeball_x'][self.annotation_idx] = new_x
+            self.updated_data['eyeball_y'] = new_y
+            self.updated_data['eyeball_x'] = new_x
             self.fixed_x = new_x
             self.fixed_y = new_y
             
         elif 'alt' in modifiers:
             radius = self.initial_data['eyeball_radius'] - \
                 (mouse_position[1] - self.initial_mouse_pos[1])
-            data_dict['eyeball_radius'][self.annotation_idx] = radius
+            self.updated_data['eyeball_radius'] = radius
             self.fixed_radius = radius
         else:
-            data_dict['eyeball_phi'][self.annotation_idx] = self.initial_data['eyeball_phi'] - \
+            self.updated_data['eyeball_phi'] = self.initial_data['eyeball_phi'] - \
                 np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
-            data_dict['eyeball_theta'][self.annotation_idx] = self.initial_data['eyeball_theta'] + \
+            self.updated_data['eyeball_theta'] = self.initial_data['eyeball_theta'] + \
                 np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
 
     def stop_annotation(self):
+        self.update_instructions()
         self.save('tmp_eyes.json')
 
     def update_instructions(self):
-        labeled_frames = len(self.data_dict['ts'])
+        labeled_frames = len(self.data_dict)
         color = self.cm(labeled_frames * 20)
         hex = rgb2hex(color)
         self.instructions = self.base_instructions + f'\nFrames labeld: [color={hex}]{labeled_frames}[/color], radius = {self.fixed_radius}'
-
-    def on_data_dict(self, window, data_dict):
-        self.update_instructions()
-        return super().on_data_dict(window, data_dict)

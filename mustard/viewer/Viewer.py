@@ -166,8 +166,9 @@ class Viewer(BoxLayout):
             for v in self.visualisers:
                 if isinstance(v, VisualiserEyeTracking):
                     self.annotator = EyeTrackingAnnotator(v)
-                    unique_x = np.unique(v.get_data()['eyeball_x'])
-                    unique_y = np.unique(v.get_data()['eyeball_y'])
+                    data = v.get_data().get_full_data_as_dict()
+                    unique_x = np.unique(data['eyeball_x'])
+                    unique_y = np.unique(data['eyeball_y'])
                     if len(unique_x) > 1 or len(unique_y) > 1:
                         self.settings['eyeTracking']['fixed_uv']['default'] = False
                         self.on_settings(None, self.settings)
@@ -492,18 +493,11 @@ class Viewer(BoxLayout):
         if not viz_found:
             return
         if settings['fixed_radius']:
-            for i in range(len(data_dict['eyeball_radius'])):
-                if self.annotator is not None:
-                    data_dict['eyeball_radius'][i] = self.annotator.fixed_radius
+            if self.annotator is not None:
+                data_dict.set_fixed_radius(self.annotator.fixed_radius)
         if settings['fixed_uv']:
-            for i in range(len(data_dict['eyeball_x'])):
-                if self.annotator is not None:
-                    if self.annotator.fixed_x is not None and self.annotator.fixed_y is not None:
-                        data_dict['eyeball_x'][i] = self.annotator.fixed_x
-                        data_dict['eyeball_y'][i] = self.annotator.fixed_y
-                    elif eye_tracking is not None:
-                        data_dict['eyeball_x'][i] = eye_tracking['eyeball_x']
-                        data_dict['eyeball_y'][i] = eye_tracking['eyeball_y']
+            if self.annotator is not None:
+                data_dict.set_fixed_uv(self.annotator.fixed_x, self.annotator.fixed_y)
         elif self.annotator is not None:
             self.annotator.fixed_x = None
             self.annotator.fixed_y = None

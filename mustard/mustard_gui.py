@@ -210,34 +210,19 @@ class DataController(GridLayout):
             self.cols = int(np.ceil(np.sqrt(len(self.children))))
 
     def add_viewer_for_each_channel_and_data_type(self, in_dict, seen_keys=[], recursionDepth=0):
-        if isinstance(in_dict, list):
-            print('    ' * recursionDepth + 'Received a list - looking through the list for containers...')
-            for num, in_dict_element in enumerate(in_dict):
-                seen_keys.append(num)
-                self.add_viewer_for_each_channel_and_data_type(in_dict_element,
-                                                               seen_keys=seen_keys,
-                                                               recursionDepth=recursionDepth + 1)
-        elif isinstance(in_dict, dict):
-            print('    ' * recursionDepth + 'Received a dict - looking through its keys ...')
-            for key_name in in_dict.keys():
-                print('    ' * recursionDepth + 'Dict contains a key "' + key_name + '" ...')
-                if isinstance(in_dict[key_name], dict):
-                    seen_keys.append(key_name)
-                    if isinstance(in_dict[key_name], ImporterBase):
-                        print('    ' * recursionDepth + 'Creating a new viewer, of type: ' + key_name)
-                        self.add_viewer_and_resize(in_dict,
-                                                   channel_name=seen_keys[-2])
-                        break  # We suppose that all timestamped data are at the same level
-                    else:  # recurse through the sub-dict
-                        self.add_viewer_for_each_channel_and_data_type(in_dict[key_name],
-                                                                       seen_keys=seen_keys,
-                                                                       recursionDepth=recursionDepth + 1)
-                elif isinstance(in_dict[key_name], list):
-                    self.add_viewer_for_each_channel_and_data_type(in_dict[key_name],
-                                                                   seen_keys=seen_keys,
-                                                                   recursionDepth=recursionDepth + 1)
-                else:
-                    print('    ' * recursionDepth + 'Ignoring that key ...')
+        print('    ' * recursionDepth + 'Received a dict - looking through its keys ...')
+        for key_name in in_dict.keys():
+            print('    ' * recursionDepth + 'Dict contains a key "' + key_name + '" ...')
+            seen_keys.append(key_name)
+            if isinstance(in_dict[key_name], ImporterBase):
+                print('    ' * recursionDepth + 'Creating a new viewer, of type: ' + key_name)
+                self.add_viewer_and_resize(in_dict,
+                                            channel_name=seen_keys[-2])
+                break  # We suppose that all timestamped data are at the same level
+            else:  # recurse through the sub-dict
+                self.add_viewer_for_each_channel_and_data_type(in_dict[key_name],
+                                                                seen_keys=seen_keys,
+                                                                recursionDepth=recursionDepth + 1)
 
     def on_data_dict(self, instance, value):
         for child in self.children:

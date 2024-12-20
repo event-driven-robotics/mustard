@@ -1,11 +1,11 @@
 import numpy as np
 from kivy.event import EventDispatcher
-from kivy.properties import StringProperty, DictProperty
+from kivy.properties import StringProperty
+from copy import deepcopy
 
 class AnnotatorBase(EventDispatcher):
     instructions = StringProperty('')
-    data_dict = DictProperty({})
-
+    
     def __init__(self, visualizer=None) -> None:
         super().__init__()
         self.visualizer = visualizer
@@ -18,32 +18,27 @@ class AnnotatorBase(EventDispatcher):
         self.initial_mouse_pos = None
         self.previous_data_dicts = []
         self.history_idx = 0
+        self.update_instructions()
 
     def get_data_type(self):
         return self.data_type
 
     def __len__(self):
-        return len(self.data_dict['ts'])
+        return len(self.data_dict)
 
     def create_new_data_entry(self, current_time, mouse_pos):
         raise NotImplementedError
 
     def start_annotation(self, current_time, mouse_pos, time_window):
-        data_dict = self.data_dict
-        self.update_previous_dicts()
+        # self.update_previous_dicts() #TODO restore history update 
         self.current_time = current_time
         self.initial_mouse_pos = mouse_pos
-        self.annotation_idx = np.searchsorted(data_dict['ts'], current_time)
-        try:
-            if abs(data_dict['ts'][self.annotation_idx] - current_time) > time_window: #TODO Specialize initial data selection based on time or mosue position
-                raise IndexError
-            self.initial_data = {x: data_dict[x][self.annotation_idx]
-                                 for x in data_dict if hasattr(data_dict[x], '__len__')}
-        except IndexError:
-            self.create_new_data_entry(current_time, mouse_pos)
-            self.initial_data = {x: data_dict[x][-1] for x in data_dict if hasattr(data_dict[x], '__len__')}
-
-        self.sort_by_ts(data_dict)
+        updated_data = self.data_dict.get_data_at_time(current_time, time_window)
+        if updated_data is not None:
+            self.updated_data = updated_data
+        else:
+            self.updated_data = self.create_new_data_entry(current_time, mouse_pos)
+        self.initial_data = deepcopy(self.updated_data)
         self.annotating = True
 
     def update_previous_dicts(self):
@@ -104,12 +99,5 @@ class AnnotatorBase(EventDispatcher):
     def stop_annotation(self):
         self.annotating = False
 
-    @staticmethod
-    def sort_by_ts(data_dict):
-        argsort = np.argsort(data_dict['ts'])
-        for d in data_dict:
-            if hasattr(data_dict[d], '__len__'):
-                data_dict[d] = data_dict[d][argsort]
-
-    def on_data_dict(self, window, data_dict):
-        self.visualizer.set_data(data_dict)
+    def update_instructions(self):
+        self.instructions = ''
