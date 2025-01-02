@@ -77,6 +77,7 @@ from bimvee.visualiser import VisualiserImu
 from bimvee.timestamps import getLastTimestamp
 from bimvee.visualiser import VisualiserSkeleton
 from bimvee.importers.ImporterBase import ImporterBase
+from bimvee.importAe import importAe
 
 class ErrorPopup(Popup):
     label_text = StringProperty(None)
@@ -204,10 +205,11 @@ class DataController(GridLayout):
 
             visualisers.append(visualiser)
         if visualisers:
-            new_viewer = Viewer(title=channel_name, visualisers=visualisers)
-            self.add_widget(new_viewer)
-
-            self.cols = int(np.ceil(np.sqrt(len(self.children))))
+            data_types = [x.data_type for x in visualisers]
+            if 'frame' in data_types or 'dvs' in data_types: # TODO Only adding viewers with frames or DVS. Consider other standalone data types
+                new_viewer = Viewer(title=channel_name, visualisers=visualisers)
+                self.add_widget(new_viewer)
+                self.cols = int(np.ceil(np.sqrt(len(self.children))))
 
     def add_viewer_for_each_channel_and_data_type(self, in_dict, seen_keys=[], recursionDepth=0):
         print('    ' * recursionDepth + 'Received a dict - looking through its keys ...')
@@ -279,11 +281,6 @@ class DataController(GridLayout):
 
     def load(self, path, selection, template=None):
         self.dismiss_popup()
-        try:
-            from importAe import importAe
-        except ModuleNotFoundError:
-            from bimvee.importAe import importAe
-
         # If both path and selection are None than it will try to reload previously given path
         if path is not None or selection is not None:
             if selection:

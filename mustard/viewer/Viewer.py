@@ -101,6 +101,7 @@ class Viewer(BoxLayout):
         self.clicked_mouse_pos = None
         self.last_added_box_idx = -1
         self.cropped_region = [0, 0, 0, 0]
+        self.title = title
         self.add_visualisers(visualisers)
 
     def window_to_image_coords(self, x, y, flip=True):
