@@ -33,7 +33,8 @@ class EyeTrackingAnnotator(AnnotatorBase):
                     'eyeball_phi': 0,
                     'eyeball_theta': 0,
                     'eyeball_radius': self.fixed_radius,
-                    'eye_closed' : False
+                    'eye_closed' : False,
+                    'ts': current_time
                     }
 
         self.data_dict.insert_sorted(new_entry, current_time)
