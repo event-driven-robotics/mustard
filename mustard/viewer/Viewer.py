@@ -265,9 +265,17 @@ class Viewer(BoxLayout):
             if v.data_type in ['dvs', 'frame', 'pose6q', 'point3', 'flowMap', 'imu']:
                 self.colorfmt = v.get_colorfmt()
                 self.data_shape = v.get_dims()
-                buf_shape = (self.data_shape[0], self.data_shape[1])
-                self.image.texture = Texture.create(size=buf_shape, colorfmt=self.colorfmt)
+                self.init_texture()
         self.settings.update(settings)
+
+    def init_texture(self):    
+        self.get_frame(self.current_time, self.current_time_window)
+        buf_shape = (self.data_shape[0], self.data_shape[1])
+        self.image.texture = Texture.create(size=buf_shape, colorfmt=self.colorfmt)
+        self.zoomable_image.apply_transform(Matrix().scale(1, 1, 1))
+
+    def on_colorfmt(self, instance, value):
+        self.init_texture()
 
     def on_settings(self, instance, settings_dict):
         if self.settings_box is not None:
