@@ -61,6 +61,16 @@
         text: "Topic"
 
 
+<NextPreviousFrameButtons@BoxLayout>
+    size_hint: 0.4, 0.05
+    Button:
+        text: 'Next Frame'
+        on_release: app.root.time_slider.value = float(root.frame_visualiser.get_data().get_time_of_next_data_point(app.root.time_slider.value))
+    Button:
+        text: 'Previous Frame'
+        on_release: app.root.time_slider.value = float(root.frame_visualiser.get_data().get_time_of_next_data_point(app.root.time_slider.value, backward=True))
+
+
 <TemplateDialog>:
     BoxLayout:
         size: root.size

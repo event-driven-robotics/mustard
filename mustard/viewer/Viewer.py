@@ -41,7 +41,11 @@ from .EyeTracker import EyeTracker
 from .EyeTrackingAnnotator import EyeTrackingAnnotator
 from .BoundingBoxAnnotator import BoundingBoxAnnotator
 
-
+class NextPreviousFrameButtons(BoxLayout):
+    frame_visualiser = ObjectProperty(None, allownone=True)
+    def __init__(self, frame_visualiser, **kwargs):
+        self.frame_visualiser = frame_visualiser
+        super().__init__(**kwargs)
 class ZoomableImage(Scatter):
 
     def __init__(self, **kwargs):
@@ -248,6 +252,8 @@ class Viewer(BoxLayout):
                 self.colorfmt = v.get_colorfmt()
                 self.data_shape = v.get_dims()
                 self.init_texture()
+            if v.data_type == 'frame':
+                self.add_widget(NextPreviousFrameButtons(v))
         self.settings.update(settings)
 
     def init_texture(self):    
