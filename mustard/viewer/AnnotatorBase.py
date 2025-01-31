@@ -14,7 +14,6 @@ class AnnotatorBase(EventDispatcher):
         self.current_time = None
         self.annotating = False
         self.label = 0
-        self.last_added_annotation_idx = None
         self.initial_mouse_pos = None
         self.previous_data_dicts = []
         self.history_idx = 0

@@ -151,15 +151,9 @@ class Viewer(BoxLayout):
                     self.ids['label_status'].text = self.annotator.instructions
                     self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
                     return
-            data_dict = {
-                'ts': np.array([]),
-                'minY': np.array([]),
-                'minX': np.array([]),
-                'maxY': np.array([]),
-                'maxX': np.array([]),
-                'label': np.array([]),
-            }
-            viz = VisualiserBoundingBoxes(data=data_dict)
+                else:
+                    tsOffset = v.get_data().ts_offset
+            viz = VisualiserBoundingBoxes()
             self.settings['boundingBoxes'] = viz.get_settings()
             self.add_visualisers(viz)
             self.annotator = BoundingBoxAnnotator(viz)
@@ -183,8 +177,6 @@ class Viewer(BoxLayout):
                     return
                 else:
                     tsOffset = v.get_data().ts_offset
-
-            #TODO the visualiser needs an importer, not a data dict
             viz = VisualiserEyeTracking()
             viz.get_data().ts_offset = tsOffset
             self.settings['eyeTracking'] = viz.get_settings()

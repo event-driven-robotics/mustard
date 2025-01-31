@@ -9,16 +9,19 @@ class BoundingBoxAnnotator(AnnotatorBase):
         self.instructions = 'Use num keys to change tag'
 
     def create_new_data_entry(self, current_time, mouse_pos):
-        data_dict = self.data_dict
-        data_dict['ts'] = np.append(data_dict['ts'], current_time)
-        data_dict['minY'] = np.append(data_dict['minY'], mouse_pos[1])
-        data_dict['minX'] = np.append(data_dict['minX'], mouse_pos[0])
-        data_dict['maxY'] = np.append(data_dict['maxY'], mouse_pos[1])
-        data_dict['maxX'] = np.append(data_dict['maxX'], mouse_pos[0])
-        data_dict['label'] = np.append(data_dict['label'], self.label)
+        new_entry = {'ts': current_time,
+                        'minY': mouse_pos[1],
+                        'minX': mouse_pos[0],
+                        'maxY': mouse_pos[1],
+                        'maxX': mouse_pos[0],
+                        'label': self.label
+                        }
+        
+        self.data_dict.insert_sorted(new_entry, current_time)
+        return new_entry
 
     def save(self, path, **kwargs):
-        data_dict = self.data_dict
+        data_dict = self.data_dict.get_full_data_as_dict()
         viz = self.visualizer
         if kwargs.get('interpolate', False):
             boxes = []
@@ -36,17 +39,15 @@ class BoundingBoxAnnotator(AnnotatorBase):
     def update(self, mouse_position, modifiers):
         if not self.annotating:
             return
-        data_dict = self.data_dict
-        data_dict['ts'][self.last_added_annotation_idx] = self.current_time
-        data_dict['minY'][self.last_added_annotation_idx] = min(mouse_position[1], self.initial_mouse_pos[1])
-        data_dict['maxY'][self.last_added_annotation_idx] = max(mouse_position[1], self.initial_mouse_pos[1])
-        data_dict['minX'][self.last_added_annotation_idx] = min(mouse_position[0], self.initial_mouse_pos[0])
-        data_dict['maxX'][self.last_added_annotation_idx] = max(mouse_position[0], self.initial_mouse_pos[0])
+        self.updated_data['ts'] = self.current_time
+        self.updated_data['minY'] = min(mouse_position[1], self.initial_mouse_pos[1])
+        self.updated_data['maxY'] = max(mouse_position[1], self.initial_mouse_pos[1])
+        self.updated_data['minX'] = min(mouse_position[0], self.initial_mouse_pos[0])
+        self.updated_data['maxX'] = max(mouse_position[0], self.initial_mouse_pos[0])
 
     def stop_annotation(self):
-        data_dict = self.data_dict
         try:
-            if data_dict['minY'][-1] == data_dict['maxY'][-1] or data_dict['minX'][-1] == data_dict['maxX'][-1]:
+            if self.updated_data['minY'] == self.updated_data['maxY'] or self.updated_data['minX'] == self.updated_data['maxX']:
                 self.undo()
         except IndexError:
             pass
