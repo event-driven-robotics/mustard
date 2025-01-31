@@ -47,14 +47,7 @@ class AnnotatorBase(EventDispatcher):
         self.history_idx += 1
 
     def get_time_of_next_annotated_frame(self, current_time, backward=False):
-        try:
-            if backward:
-                next_idx = np.searchsorted(self.data_dict['ts'], current_time - 0.0001) - 1
-            else:
-                next_idx = np.searchsorted(self.data_dict['ts'], current_time + 0.0001) % len(self)
-            return float(self.data_dict['ts'][next_idx])
-        except IndexError:
-            return current_time
+        return float(self.data_dict.get_time_of_next_data_point(current_time, backward))
 
     def undo(self):
         if self.history_idx == len(self.previous_data_dicts):

@@ -182,21 +182,11 @@ class Viewer(BoxLayout):
                     self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
                     return
                 else:
-                    try:
-                        tsOffset = v.get_data()['tsOffset']
-                    except KeyError:
-                        pass
-            data_dict = {
-                'eyeball_radius': np.array([]),
-                'eyeball_x': np.array([]),
-                'eyeball_y': np.array([]),
-                'eyeball_phi': np.array([]),
-                'eyeball_theta': np.array([]),
-                'eye_closed': np.array([], dtype=bool),
-                'ts': np.array([]),
-                'tsOffset': tsOffset
-            }
-            viz = VisualiserEyeTracking(data=data_dict)
+                    tsOffset = v.get_data().ts_offset
+
+            #TODO the visualiser needs an importer, not a data dict
+            viz = VisualiserEyeTracking()
+            viz.get_data().ts_offset = tsOffset
             self.settings['eyeTracking'] = viz.get_settings()
             self.add_visualisers(viz)
             self.annotator = EyeTrackingAnnotator(viz)

@@ -41,16 +41,15 @@ class EyeTrackingAnnotator(AnnotatorBase):
         return new_entry
 
     def save(self, path, **kwargs):
-        return
-        data_dict = deepcopy(dict(self.data_dict))
-        data_dict['ts'] -= data_dict['tsOffset']
+        data_dict = self.data_dict.get_full_data_as_dict()
+        data_dict['ts'] -= self.data_dict.ts_offset
         out_list = []
         for i in range(len(data_dict['ts'])):
             out_dict = {}
             for x in data_dict:
                 if not hasattr(data_dict[x], '__len__'):
                     continue
-                val = data_dict[x][i].item()
+                val = data_dict[x][i]
                 out_dict.update({x: val})
             out_list.append(out_dict)
         with open(path, 'w') as f:
