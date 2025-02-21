@@ -485,21 +485,22 @@ class Viewer(BoxLayout):
         viz_found = False
         for v in self.visualisers:
             if isinstance(v, VisualiserEyeTracking):
-                data_dict = v.get_data()
+                data_importer = v.get_data()   ## maybe .get_data().get_full_data_as_dict()
                 viz_found = True
         if not viz_found:
             return
         if settings['fixed_radius']:
             if self.annotator is not None:
-                data_dict.set_fixed_radius(self.annotator.fixed_radius)
+                data_importer.set_fixed_radius(self.annotator.fixed_radius)
         if settings['fixed_uv']:
             if self.annotator is not None:
-                data_dict.set_fixed_uv(self.annotator.fixed_x, self.annotator.fixed_y)
+                data_importer.set_fixed_uv(self.annotator.fixed_x, self.annotator.fixed_y)
         elif self.annotator is not None:
             self.annotator.fixed_x = None
             self.annotator.fixed_y = None
             
         if settings['show_xy_pointcloud']:
+            data_dict = data_importer.get_full_data_as_dict()
             eye_tracking_args['pointcloud'] = [self.img_to_window_coordinates(
                 y, x) for x, y in zip(data_dict['eyeball_x'], data_dict['eyeball_y'])]
         eye_track = EyeTracker(**eye_tracking_args)
