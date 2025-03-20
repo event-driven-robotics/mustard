@@ -2,6 +2,8 @@ import numpy as np
 from kivy.event import EventDispatcher
 from kivy.properties import StringProperty
 from copy import deepcopy
+import os
+from pathlib import Path
 
 class AnnotatorBase(EventDispatcher):
     instructions = StringProperty('')
@@ -17,6 +19,9 @@ class AnnotatorBase(EventDispatcher):
         self.initial_mouse_pos = None
         self.previous_data_dicts = []
         self.history_idx = 0
+        self.auto_save_path = home = os.path.join(Path.home(), '.mustard')
+        if not os.path.exists(self.auto_save_path):
+            os.makedirs(self.auto_save_path)
         self.update_instructions()
 
     def get_data_type(self):
@@ -89,7 +94,9 @@ class AnnotatorBase(EventDispatcher):
         raise NotImplementedError
 
     def stop_annotation(self):
+        self.update_instructions()
         self.annotating = False
+        self.save(os.path.join(self.auto_save_path, 'tmp'))
 
     def update_instructions(self):
         self.instructions = ''

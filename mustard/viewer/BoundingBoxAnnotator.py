@@ -1,6 +1,6 @@
 from .AnnotatorBase import AnnotatorBase
 import numpy as np
-
+import os
 
 class BoundingBoxAnnotator(AnnotatorBase):
 
@@ -21,6 +21,8 @@ class BoundingBoxAnnotator(AnnotatorBase):
         return new_entry
 
     def save(self, path, **kwargs):
+        if not os.path.splitext(path)[-1] == 'csv':
+            path = os.path.splitext(path)[0] + '.csv'
         data_dict = self.data_dict.get_full_data_as_dict()
         viz = self.visualizer
         if kwargs.get('interpolate', False):
@@ -51,4 +53,4 @@ class BoundingBoxAnnotator(AnnotatorBase):
                 self.undo()
         except IndexError:
             pass
-        self.save('tmp_boxes.csv')
+        super().stop_annotation()

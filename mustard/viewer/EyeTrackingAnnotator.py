@@ -1,7 +1,7 @@
 from .AnnotatorBase import AnnotatorBase
 import numpy as np
 import json
-from copy import deepcopy
+import os
 from matplotlib import colormaps
 from matplotlib.colors import rgb2hex
 
@@ -41,6 +41,8 @@ class EyeTrackingAnnotator(AnnotatorBase):
         return new_entry
 
     def save(self, path, **kwargs):
+        if not os.path.splitext(path)[-1] == 'json':
+            path = os.path.splitext(path)[0] + '.json'
         data_dict = self.data_dict.get_full_data_as_dict()
         data_dict['ts'] -= self.data_dict.ts_offset
         out_list = []
@@ -83,10 +85,6 @@ class EyeTrackingAnnotator(AnnotatorBase):
                 np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
             self.updated_data['eyeball_theta'] = self.initial_data['eyeball_theta'] + \
                 np.deg2rad(mouse_position[0] - self.initial_mouse_pos[0])
-
-    def stop_annotation(self):
-        self.update_instructions()
-        self.save('tmp_eyes.json')
 
     def update_instructions(self):
         labeled_frames = len(self.data_dict)

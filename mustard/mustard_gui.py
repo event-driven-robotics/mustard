@@ -272,9 +272,23 @@ class DataController(GridLayout):
 
     def show_save(self, save_fun):
         self.dismiss_popup()
-        content = SaveDialog(save=save_fun,
+        try:
+            save_path=self.cache_json['LastSavedPath']
+        except KeyError:
+            save_path=self.cache_json['LastLoadedPath']
+        if not os.path.isdir(save_path):
+            save_path=os.path.dirname(save_path)
+        while len(os.listdir(save_path)) > 100:
+            save_path=os.path.dirname(save_path)
+
+        def save_wrapper(path):
+            save_fun(path)
+            self.dismiss_popup()
+            self.update_cache_element("LastSavedPath", path)
+        
+        content = SaveDialog(save=save_wrapper,
                              cancel=self.dismiss_popup,
-                             save_path=self.cache_json['LastLoadedPath'])
+                             save_path=save_path)
         self._popup = Popup(title="Save file", content=content,
                             size_hint=(0.9, 0.9))
         self._popup.open()
