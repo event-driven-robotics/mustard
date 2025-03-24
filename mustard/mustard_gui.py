@@ -78,6 +78,34 @@ from bimvee.timestamps import getLastTimestamp
 from bimvee.visualiser import VisualiserSkeleton
 from bimvee.importers.ImporterBase import ImporterBase
 from bimvee.importAe import importAe
+from kivy.uix.filechooser import FileChooserController
+
+# Wrap the _apply_filters method with the _filter_files_decorator
+original_apply_filters = FileChooserController._apply_filters
+
+
+def _filter_files_decorator(self, files):
+    if len(files)  > 100:
+        path_exts = [os.path.splitext(x)[-1] for x in files]
+        ext, count = np.unique(path_exts, return_counts=True)
+        filtered_files = []
+        for i, c in enumerate(count):
+            if c > 100:
+                sorted_filtered_files = sorted([x for x in files if os.path.splitext(x)[-1] == ext[i]])
+                filtered_files.append(sorted_filtered_files[0] + ' ... ' + os.path.basename(sorted_filtered_files[-1]))
+            else:
+                filtered_files.extend([x for x in files if os.path.splitext(x)[-1] == ext[i]])
+        files = filtered_files
+    return files
+
+
+def decorated_apply_filters(self, files):
+    # Apply the decorator before calling the original function
+    files = _filter_files_decorator(self, files)
+    return original_apply_filters(self, files)
+
+FileChooserController._apply_filters = decorated_apply_filters
+
 
 class ErrorPopup(Popup):
     label_text = StringProperty(None)
@@ -259,10 +287,7 @@ class DataController(GridLayout):
     def show_load(self):
         self.dismiss_popup()
         load_path=self.cache_json['LastLoadedPath']
-        if not os.path.isdir(load_path):
-            load_path=os.path.dirname(load_path)
-        while len(os.listdir(load_path)) > 100:
-            load_path=os.path.dirname(load_path)
+
         content = LoadDialog(load=self.load,
                              cancel=self.dismiss_popup,
                              load_path=load_path)
@@ -276,10 +301,7 @@ class DataController(GridLayout):
             save_path=self.cache_json['LastSavedPath']
         except KeyError:
             save_path=self.cache_json['LastLoadedPath']
-        if not os.path.isdir(save_path):
-            save_path=os.path.dirname(save_path)
-        while len(os.listdir(save_path)) > 100:
-            save_path=os.path.dirname(save_path)
+            
 
         def save_wrapper(path):
             save_fun(path)

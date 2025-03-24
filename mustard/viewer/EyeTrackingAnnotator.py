@@ -6,6 +6,16 @@ from matplotlib import colormaps
 from matplotlib.colors import rgb2hex
 
 
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
 class EyeTrackingAnnotator(AnnotatorBase):
 
     def __init__(self, visualizer) -> None:
@@ -55,7 +65,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
                 out_dict.update({x: val})
             out_list.append(out_dict)
         with open(path, 'w') as f:
-            json.dump(out_list, f)
+            json.dump(out_list, f,cls=NpEncoder)
 
     def update(self, mouse_position, modifiers):
         if not self.annotating or len(self) == 0:

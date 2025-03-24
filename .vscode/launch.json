@@ -11,9 +11,7 @@
             "program": "${workspaceFolder}/mustard/__main__.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}:/home/mbouanane/code/bimvee"
-            }
+            "env": {"LIBGL_ALWAYS_SOFTWARE": "1"}
         }
     ]
 }

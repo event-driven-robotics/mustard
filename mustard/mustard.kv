@@ -136,7 +136,7 @@
             TextInput:
                 id: filename
                 multiline: False
-                text: "ground_truth.csv"
+                text: os.path.basename(root.save_path) if not filechooser.selection else os.path.basename(filechooser.selection[0])
         BoxLayout:
             size_hint_y: .2
             padding: 10
