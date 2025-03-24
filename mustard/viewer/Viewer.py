@@ -456,7 +456,10 @@ class Viewer(BoxLayout):
 
     def update_eye_tracking(self, eye_tracking):
         eye_tracking_args = {}
-        settings = self.settings_values['eyeTracking']
+        try:
+            settings = self.settings_values['eyeTracking']
+        except KeyError:
+            return
         if eye_tracking is not None:
             y = int(eye_tracking['eyeball_x'])
             x = int(eye_tracking['eyeball_y'])
