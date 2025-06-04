@@ -24,7 +24,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
             'Mouse: rotate, Ctrl+mouse: translate, Alt+mouse: resize, Right_click to toggle eye closed flag'
         self.instructions = self.base_instructions
         self.cm = colormaps.get_cmap('RdYlGn')
-        self.fixed_radius = 100
+        self.fixed_radius = None
         self.fixed_x = None
         self.fixed_y = None
         super().__init__(visualizer)
@@ -42,7 +42,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
                     'eyeball_y': new_y,
                     'eyeball_phi': 0,
                     'eyeball_theta': 0,
-                    'eyeball_radius': self.fixed_radius,
+                    'eyeball_radius': self.fixed_radius if self.fixed_radius is not None else 100,
                     'eye_closed' : False,
                     'ts': current_time
                     }
@@ -89,7 +89,8 @@ class EyeTrackingAnnotator(AnnotatorBase):
             radius = self.initial_data['eyeball_radius'] - \
                 (mouse_position[1] - self.initial_mouse_pos[1])
             self.updated_data['eyeball_radius'] = radius
-            self.fixed_radius = radius
+            if self.fixed_radius is not None:
+                self.fixed_radius = radius
         else:
             self.updated_data['eyeball_phi'] = self.initial_data['eyeball_phi'] - \
                 np.deg2rad(mouse_position[1] - self.initial_mouse_pos[1])
@@ -100,4 +101,6 @@ class EyeTrackingAnnotator(AnnotatorBase):
         labeled_frames = len(self.data_dict)
         color = self.cm(labeled_frames * 20)
         hex = rgb2hex(color)
-        self.instructions = self.base_instructions + f'\nFrames labeld: [color={hex}]{labeled_frames}[/color], radius = {self.fixed_radius}'
+        self.instructions = self.base_instructions + f'\nFrames labeld: [color={hex}]{labeled_frames}[/color]'
+        if self.fixed_radius is not None:
+            self.instructions += f', radius = {self.fixed_radius}'
