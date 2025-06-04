@@ -4,7 +4,7 @@ import json
 import os
 from matplotlib import colormaps
 from matplotlib.colors import rgb2hex
-
+from scipy.interpolate import interp1d
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -67,13 +67,12 @@ class EyeTrackingAnnotator(AnnotatorBase):
                 out_list.append(out_dict)
         else:
             out_list = []
-            from scipy.interpolate import interp1d
             time_stamps = np.loadtxt('/home/cpham-iit.local/data/Eye_tracking/yeti_27/user7/1/scarf_images/scarf2/timestamps.txt')
             for time in time_stamps:
                 out_dict = {}
                 for key in data_dict.keys():
                     val = data_dict.get(key) 
-                    if key == 'eye_closed': #dont interpolate eye_closed value
+                    if key == 'eye_closed': 
                         #TODO save label when the eye closed at time
                         zero_interp = interp1d(data_dict['ts'], val, kind = 'zero', fill_value='extrapolate')
                         out_dict[key] = int(zero_interp(time))
