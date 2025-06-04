@@ -176,6 +176,15 @@ class Viewer(BoxLayout):
                         self.annotator.fixed_x = unique_x[0]
                         self.annotator.fixed_y = unique_y[0]
 
+                    unique_radius = np.unique(data['eyeball_radius'])
+                    if len(unique_radius) > 1:
+                        self.settings['eyeTracking']['fixed_radius']['default'] = False
+                        self.on_settings(None, self.settings)
+                    
+                    if self.settings_values['eyeTracking']['fixed_radius']:
+                        self.annotator.fixed_radius = unique_radius[0]
+
+                    self.annotator.update_instructions()
                     self.ids['label_status'].text = self.annotator.instructions
                     self.annotator.bind(instructions=self.ids['label_status'].setter('text'))
                     return
@@ -494,7 +503,18 @@ class Viewer(BoxLayout):
             return
         if settings['fixed_radius']:
             if self.annotator is not None:
+                current_annotation = data_importer.get_data_at_time(self.current_time, self.current_time_window)
+                try:
+                    current_radius = current_annotation['eyeball_radius']
+                    self.annotator.fixed_radius = current_radius
+                except TypeError:
+                    pass
+                self.annotator.update_instructions()
                 data_importer.set_fixed_radius(self.annotator.fixed_radius)
+        else:
+            if self.annotator is not None:
+                self.annotator.fixed_radius = None
+                self.annotator.update_instructions()
         if settings['fixed_uv']:
             if self.annotator is not None:
                 data_importer.set_fixed_uv(self.annotator.fixed_x, self.annotator.fixed_y)
