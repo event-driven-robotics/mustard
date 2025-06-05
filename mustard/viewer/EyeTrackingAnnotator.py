@@ -4,7 +4,7 @@ import json
 import os
 from matplotlib import colormaps
 from matplotlib.colors import rgb2hex
-from scipy.interpolate import interp1d
+
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -64,7 +64,6 @@ class EyeTrackingAnnotator(AnnotatorBase):
                 val = data_dict[x][i]
                 out_dict.update({x: val})
             out_list.append(out_dict)
-
         with open(path, 'w') as f:
             json.dump(out_list, f,cls=NpEncoder)
 
