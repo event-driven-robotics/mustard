@@ -53,36 +53,17 @@ class EyeTrackingAnnotator(AnnotatorBase):
     def save(self, path, **kwargs):
         if not os.path.splitext(path)[-1] == 'json':
             path = os.path.splitext(path)[0] + '.json'
-        data_dict = self.data_dict.get_full_data_as_dict()
+        data_dict = self.data_dict.get_full_data_as_dict(**kwargs)
         data_dict['ts'] -= self.data_dict.ts_offset
-        if kwargs.get('interpolate') == False:
-            out_list = []
-            for i in range(len(data_dict['ts'])):
-                out_dict = {}
-                for x in data_dict:
-                    if not hasattr(data_dict[x], '__len__'):
-                        continue
-                    val = data_dict[x][i]
-                    out_dict.update({x: val})
-                out_list.append(out_dict)
-        else:
-            out_list = []
-            time_stamps = np.loadtxt('/home/cpham-iit.local/data/Eye_tracking/yeti_27/user7/1/scarf_images/scarf2/timestamps.txt')
-            for time in time_stamps:
-                out_dict = {}
-                for key in data_dict.keys():
-                    val = data_dict.get(key) 
-                    if key == 'eye_closed': 
-                        #TODO save label when the eye closed at time
-                        zero_interp = interp1d(data_dict['ts'], val, kind = 'zero', fill_value='extrapolate')
-                        out_dict[key] = int(zero_interp(time))
-                        continue
-                    linear_interp = interp1d(data_dict['ts'], val, kind='linear')
-                    try:
-                        out_dict[key] = linear_interp(time)
-                    except ValueError:
-                        return None
-                out_list.append(out_dict)
+        out_list = []
+        for i in range(len(data_dict['ts'])):
+            out_dict = {}
+            for x in data_dict:
+                if not hasattr(data_dict[x], '__len__'):
+                    continue
+                val = data_dict[x][i]
+                out_dict.update({x: val})
+            out_list.append(out_dict)
 
         with open(path, 'w') as f:
             json.dump(out_list, f,cls=NpEncoder)
