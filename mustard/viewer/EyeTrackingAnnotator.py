@@ -53,7 +53,7 @@ class EyeTrackingAnnotator(AnnotatorBase):
     def save(self, path, **kwargs):
         if not os.path.splitext(path)[-1] == 'json':
             path = os.path.splitext(path)[0] + '.json'
-        data_dict = self.data_dict.get_full_data_as_dict()
+        data_dict = self.data_dict.get_full_data_as_dict(**kwargs)
         data_dict['ts'] -= self.data_dict.ts_offset
         out_list = []
         for i in range(len(data_dict['ts'])):
