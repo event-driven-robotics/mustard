@@ -1,7 +1,7 @@
 # MUSTARD
 MUlti STream Agnostic Representation Dataplayer
 
-This GUI can be used to visualize multiple streams of data encoded in any format supported by BIMVEE, which is the data management library used under the hood. The main purpose is to visualize event-based data, alongside with any accompanying stream being RGB frames, IMU, skeleton for human pose estimation, bounding boxes for image annotation. It also features an annotation tool to draw bounding boxes on vision-derived data.
+This GUI can be used to visualize multiple streams of data encoded in any format supported by BIMVEE, which is the data management library used under the hood. The main purpose is to visualize event-based data, alongside with any accompanying stream being RGB frames, IMU, skeleton for human pose estimation. It also features an annotation and visualization tool to draw bounding boxes and eye gaze on vision-derived data.
 
 # Install via PIP
 
