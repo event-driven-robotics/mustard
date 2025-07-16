@@ -41,6 +41,14 @@ import json
 from textwrap import wrap
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
+Window.clearcolor = ("#96939B")
+Window.size = (800, 600)
+Window.title = 'Mustard - Multimodal Data Visualisation'
+Window.icon = 'graphics/IIT-EDR-logo-t1.png'
+Window.resizable = True
+Window.minimum_width = 640
+Window.minimum_height = 480
+
 os.environ['KIVY_NO_ARGS'] = 'T'
 
 # Optional import of tkinter allows setting of app size wrt screen size
@@ -79,6 +87,7 @@ from bimvee.visualiser import VisualiserSkeleton
 from bimvee.importers.ImporterBase import ImporterBase
 from bimvee.importAe import importAe
 from kivy.uix.filechooser import FileChooserController
+from kivy.uix.label import Label
 
 # Wrap the _apply_filters method with the _filter_files_decorator
 original_apply_filters = FileChooserController._apply_filters
@@ -123,7 +132,24 @@ class LoadDialog(FloatLayout):
     load = ObjectProperty(None)
     cancel = ObjectProperty(None)
     load_path = StringProperty(None)
+    
+    def on_kv_post(self, base_widget):
+        self.change_color_to_children_labels(base_widget) 
+        self.init_widget()
+        
+    @staticmethod
+    def change_color_to_children_labels(widget):
+        for child in widget.walk():
+            if isinstance(child, Label):
+                child.color = (1, 1, 1, 1)
+    
+    def init_widget(self):
+        fc = self.ids['filechooser']
+        fc.bind(on_entry_added=self.update_file_list_entry)
+        fc.bind(on_subentry_to_entry=self.update_file_list_entry)
 
+    def update_file_list_entry(self, file_chooser, file_list_entry, *args):
+        self.change_color_to_children_labels(file_list_entry)
 
 class SaveDialog(FloatLayout):
     save = ObjectProperty(None)
