@@ -351,7 +351,7 @@ class Viewer(BoxLayout):
                         data = np.flip(data, axis=0)
                 except AttributeError:
                     pass  # It's not a class that allows flipping
-                self.image.texture.blit_buffer(data.tostring(), bufferfmt="ubyte", colorfmt=self.colorfmt)
+                self.image.texture.blit_buffer(data.tobytes(), bufferfmt="ubyte", colorfmt=self.colorfmt)
 
     def update_b_boxes(self, b_boxes):
         if b_boxes is None:
