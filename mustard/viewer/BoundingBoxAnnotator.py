@@ -1,6 +1,7 @@
 from .AnnotatorBase import AnnotatorBase
 import numpy as np
 import os
+from copy import deepcopy
 
 class BoundingBoxAnnotator(AnnotatorBase):
 
@@ -19,6 +20,13 @@ class BoundingBoxAnnotator(AnnotatorBase):
         
         self.data_dict.insert_sorted(new_entry, current_time)
         return new_entry
+
+    def start_annotation(self, current_time, mouse_pos, time_window):
+        self.current_time = current_time
+        self.initial_mouse_pos = mouse_pos
+        self.updated_data = self.create_new_data_entry(current_time, mouse_pos)
+        self.initial_data = deepcopy(self.updated_data)
+        self.annotating = True
 
     def save(self, path, **kwargs):
         if not os.path.splitext(path)[-1] == 'csv':

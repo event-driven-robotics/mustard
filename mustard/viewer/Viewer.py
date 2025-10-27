@@ -364,42 +364,46 @@ class Viewer(BoxLayout):
 
         w_ratio = image_width / texture_width
         h_ratio = image_height / texture_height
-        for n, b in enumerate(bb_copy):
-            for i in range(4):
-                b[i] = dp(b[i])
+        for n in range(len(bb_copy['ts'])):
+            b = {}
+            b['minY'] = dp(bb_copy['minY'][n])
+            b['minX'] = dp(bb_copy['minX'][n])
+            b['maxY'] = dp(bb_copy['maxY'][n])
+            b['maxX'] = dp(bb_copy['maxX'][n])
+            
             if self.flipHoriz:
-                min_x = texture_width - b[3]
-                max_x = texture_width - b[1]
-                b[1] = min_x
-                b[3] = max_x
+                min_x = texture_width - b['maxX']
+                max_x = texture_width - b['minX']
+                b['minX'] = min_x
+                b['maxX'] = max_x
             if self.flipVert:
-                min_y = texture_height - b[2]
-                max_y = texture_height - b[0]
-                b[0] = min_y
-                b[2] = max_y
+                min_y = texture_height - b['maxY']
+                max_y = texture_height - b['minY']
+                b['minY'] = min_y
+                b['maxY'] = max_y
 
-            if not (self.cropped_region[0] < (b[3] + b[1]) / 2 < self.cropped_region[0] + self.cropped_region[2] and
-                    self.cropped_region[1] < texture_height - ((b[2] + b[0]) / 2) < self.cropped_region[1] + self.cropped_region[3]):
+            if not (self.cropped_region[0] < (b['maxX'] + b['minX']) / 2 < self.cropped_region[0] + self.cropped_region[2] and
+                    self.cropped_region[1] < texture_height - ((b['maxY'] + b['minY']) / 2) < self.cropped_region[1] + self.cropped_region[3]):
                 continue
 
-            width = w_ratio * float(b[3] - b[1])
-            height = h_ratio * float(b[2] - b[0])
+            width = w_ratio * float(b['maxX'] - b['minX'])
+            height = h_ratio * float(b['maxY'] - b['minY'])
             if width == 0 and height == 0:
-                break
+                continue
 
-            x = x_img + w_ratio * float(b[1])
-            y = y_img + h_ratio * (texture_height - float(b[2]))
+            x = x_img + w_ratio * float(b['minX'])
+            y = y_img + h_ratio * (texture_height - float(b['maxY']))
 
             try:
-                bb_color = self.cm.colors[b[4] % len(self.cm.colors)] + (1,)
-                label = b[4]
+                bb_color = self.cm.colors[b['label'] % len(self.cm.colors)] + (1,)
+                label = b['label']
                 if label == 0:  # Label = 0 is considered as unlabeled
-                    raise IndexError
+                    raise KeyError
                 box_item = LabeledBoundingBox(bb_color=bb_color,
                                               x=x, y=y,
                                               width=width, height=height,
                                               label=label)
-            except IndexError:
+            except KeyError:
                 box_item = BoundingBox(bb_color=self.cm.colors[0],
                                        x=x, y=y,
                                        width=width, height=height)
